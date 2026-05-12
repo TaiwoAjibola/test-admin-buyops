@@ -374,18 +374,18 @@ export function CompanyManagement() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {company.type.toUpperCase()}
+                          {(company.type || "unknown").toUpperCase()}
                         </Badge>
                       </TableCell>
-                      <TableCell>{company.contactPerson}</TableCell>
+                      <TableCell>{company.contactPerson || "—"}</TableCell>
                       <TableCell className="text-center">
-                        {company._count.assets ?? 0}
+                        {company._count?.assets ?? company.totalAssets ?? 0}
                       </TableCell>
                       <TableCell className="text-center">
                         {company.totalTransactions ?? 0}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {company.commissionRate}%
+                        {company.commissionRate ?? "—"}%
                       </TableCell>
                       <TableCell>
                         <Badge

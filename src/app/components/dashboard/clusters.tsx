@@ -344,8 +344,8 @@ export function Clusters() {
                         {cluster.serialId || cluster.id}
                       </TableCell>
                       <TableCell>{cluster.name}</TableCell>
-                      <TableCell>{cluster.teamLead || "—"}</TableCell>
-                      <TableCell>{cluster.agents ?? 0}</TableCell>
+                      <TableCell>{cluster.teamLead || getLeadLabel(cluster.managerId) || "—"}</TableCell>
+                      <TableCell>{cluster.agents ?? cluster.agentCount ?? 0}</TableCell>
                       <TableCell>{cluster.activeAssets ?? 0}</TableCell>
                       <TableCell>
                         ₦{Number(cluster.totalCommission || 0).toLocaleString()}
