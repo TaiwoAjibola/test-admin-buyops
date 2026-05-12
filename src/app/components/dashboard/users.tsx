@@ -51,6 +51,7 @@ import {
   agentsApi,
   freelancersApi,
   leadsApi,
+  investorsApi,
 } from "../../../utils/api-service";
 
 export function Users() {
@@ -82,6 +83,8 @@ export function Users() {
   const [editUserStatus, setEditUserStatus] = useState("");
 
   const [users, setUsers] = useState<any[]>([]);
+  const [investors, setInvestors] = useState<any[]>([]);
+  const [investorPlatform, setInvestorPlatform] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,8 +96,12 @@ export function Users() {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [selectedRole]);
+    if (selectedRole === "INVESTOR") {
+      fetchInvestors();
+    } else {
+      fetchUsers();
+    }
+  }, [selectedRole, investorPlatform]);
 
   const fetchClusters = async () => {
     try {
@@ -114,6 +121,23 @@ export function Users() {
     } catch (err: any) {
       setError(
         err?.response?.data?.message || err?.message || "Failed to fetch users",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInvestors = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filters: any = {};
+      if (investorPlatform !== 'all') filters.platform = investorPlatform;
+      const data = await investorsApi.getAll(filters);
+      setInvestors(data);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message || err?.message || "Failed to fetch investors",
       );
     } finally {
       setLoading(false);
@@ -343,6 +367,24 @@ export function Users() {
         </TabsList>
 
         <TabsContent value={selectedRole} className="space-y-6">
+          {selectedRole === "INVESTOR" && (
+            <div className="flex items-center gap-4">
+              <Label className="text-sm">Filter by Platform:</Label>
+              <Select value={investorPlatform} onValueChange={setInvestorPlatform}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Platforms</SelectItem>
+                  <SelectItem value="BuyOps">BuyOps</SelectItem>
+                  <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-sm text-muted-foreground">
+                {investors.length} investor{investors.length !== 1 ? 's' : ''} found
+              </div>
+            </div>
+          )}
           {/* User Stats */}
           <div className="grid gap-6 md:grid-cols-3">
             <Card className="shadow-sm">
@@ -353,24 +395,52 @@ export function Users() {
                 {getRoleIcon()}
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-semibold">{users.length}</div>
+                <div className="text-2xl font-semibold">
+                  {selectedRole === "INVESTOR" ? investors.length : users.length}
+                </div>
               </CardContent>
             </Card>
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Users
+                  Active {getRoleLabel(selectedRole)}
                 </CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-semibold">
-                  {
-                    users.filter(
-                      (u) => String(u.status).toUpperCase() === "ACTIVE",
-                    ).length
-                  }
+                  {selectedRole === "INVESTOR"
+                    ? investors.filter((i) => i.status === "active").length
+                    : users.filter(
+                        (u) => String(u.status).toUpperCase() === "ACTIVE",
+                      ).length}
                 </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {selectedRole === "INVESTOR" ? "Total Invested" : "Total Commission"}
+                </CardTitle>
+                <p className="text-muted text-xl">₦</p>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold">
+                  ₦{(selectedRole === "INVESTOR"
+                    ? investors.reduce((sum, i) => sum + i.totalInvested, 0)
+                    : users.reduce(
+                        (sum, u) =>
+                          sum +
+                          (u.agentProfile?.totalCommission ||
+                            u.freelancerProfile?.totalCommission ||
+                            0),
+                        0,
+                      )
+                  ).toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
               </CardContent>
             </Card>
             <Card className="shadow-sm">
@@ -590,8 +660,11 @@ export function Users() {
                         )}
                         {selectedRole === "INVESTOR" && (
                           <>
+                            <TableHead>Platform</TableHead>
                             <TableHead>Total Invested</TableHead>
-                            <TableHead>Transactions</TableHead>
+                            <TableHead>Total Paid</TableHead>
+                            <TableHead>Outstanding</TableHead>
+                            <TableHead>Payment Type</TableHead>
                           </>
                         )}
                         {(selectedRole === "AGENT" ||
@@ -609,7 +682,87 @@ export function Users() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.length === 0 ? (
+                      {selectedRole === "INVESTOR" ? (
+                        investors.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={11}
+                              className="text-center py-8 text-muted-foreground"
+                            >
+                              No investors found
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          investors.map((investor) => (
+                            <TableRow key={investor.id}>
+                              <TableCell className="font-mono text-sm">
+                                {investor.id}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {investor.name}
+                              </TableCell>
+                              <TableCell>{investor.email}</TableCell>
+                              <TableCell>{investor.phone || "—"}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    investor.investorPlatform === "URBCO"
+                                      ? "border-purple-500 text-purple-700"
+                                      : "border-blue-500 text-blue-700"
+                                  }
+                                >
+                                  {investor.investorPlatform}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                ₦{investor.totalInvested.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                ₦{investor.totalPaid.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                ₦{investor.outstandingBalance.toLocaleString()}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    investor.paymentType === "one-time"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                >
+                                  {investor.paymentType === "one-time"
+                                    ? "One-time"
+                                    : "Installment"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    investor.status === "active"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                >
+                                  {investor.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setViewUser(investor)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )
+                      ) : users.length === 0 ? (
                         <TableRow>
                           <TableCell
                             colSpan={11}

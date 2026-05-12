@@ -19,6 +19,7 @@ import {
   mockInvoices,
   mockUsers,
   mockReports,
+  mockInvestors,
 } from '../app/lib/mock-data';
 
 // Helper to simulate network delay
@@ -191,11 +192,17 @@ export const assetsApi = {
   getAll: async (filters?: any) => {
     await delay(300);
     let result = clone(assets);
+    if (filters?.platform && filters.platform !== 'all') {
+      result = result.filter(a => a.platform === filters.platform);
+    }
     if (filters?.type && filters.type !== 'all') {
       result = result.filter(a => a.type.toLowerCase() === filters.type.toLowerCase());
     }
     if (filters?.status && filters.status !== 'all') {
       result = result.filter(a => a.status === filters.status);
+    }
+    if (filters?.companyId) {
+      result = result.filter(a => a.companyId === filters.companyId);
     }
     return result;
   },
@@ -209,8 +216,10 @@ export const assetsApi = {
 
   create: async (data: any) => {
     await delay(500);
+    const platform = data.platform || 'BuyOps';
     const newAsset = {
-      id: 'asset-' + Date.now(),
+      id: (platform === 'URBCO' ? 'urb-' : 'asset-') + Date.now(),
+      platform,
       ...data,
       status: data.status || 'draft',
       createdAt: new Date().toISOString(),
@@ -223,7 +232,24 @@ export const assetsApi = {
     await delay(500);
     const index = assets.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Asset not found');
+    // Prevent changing platform from BuyOps to URBCO
+    if (assets[index].platform === 'BuyOps' && data.platform === 'URBCO') {
+      throw new Error('BuyOps assets cannot be transferred to URBCO');
+    }
     assets[index] = { ...assets[index], ...data };
+    return clone(assets[index]);
+  },
+
+  transferToBuyOps: async (id: string) => {
+    await delay(500);
+    const index = assets.findIndex(a => a.id === id);
+    if (index === -1) throw new Error('Asset not found');
+    if (assets[index].platform !== 'URBCO') {
+      throw new Error('Only URBCO assets can be transferred to BuyOps');
+    }
+    assets[index].platform = 'BuyOps';
+    assets[index].id = 'asset-' + Date.now();
+    assets[index].status = 'active';
     return clone(assets[index]);
   },
 
@@ -943,6 +969,78 @@ export const reportsApi = {
     await delay(500);
     // Return a mock blob
     return new Blob(['mock report data'], { type: 'application/pdf' });
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// INVESTORS API
+// ══════════════════════════════════════════════════════════════════════════
+
+let investors = clone(mockInvestors);
+
+export const investorsApi = {
+  getAll: async (filters?: any) => {
+    await delay(300);
+    let result = clone(investors);
+    if (filters?.platform && filters.platform !== 'all') {
+      result = result.filter(i => i.investorPlatform === filters.platform);
+    }
+    if (filters?.status && filters.status !== 'all') {
+      result = result.filter(i => i.status === filters.status);
+    }
+    return result;
+  },
+
+  getById: async (id: string) => {
+    await delay(200);
+    const investor = investors.find(i => i.id === id);
+    if (!investor) throw new Error('Investor not found');
+    return clone(investor);
+  },
+
+  create: async (data: any) => {
+    await delay(500);
+    const newInvestor = {
+      id: 'inv-' + Date.now(),
+      ...data,
+      totalInvested: 0,
+      totalPaid: 0,
+      outstandingBalance: 0,
+      assets: [],
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+    investors.push(newInvestor);
+    return clone(newInvestor);
+  },
+
+  update: async (id: string, data: any) => {
+    await delay(500);
+    const index = investors.findIndex(i => i.id === id);
+    if (index === -1) throw new Error('Investor not found');
+    investors[index] = { ...investors[index], ...data };
+    return clone(investors[index]);
+  },
+
+  delete: async (id: string) => {
+    await delay(300);
+    const index = investors.findIndex(i => i.id === id);
+    if (index === -1) throw new Error('Investor not found');
+    investors.splice(index, 1);
+    return { success: true };
+  },
+
+  recordPayment: async (investorId: string, assetId: string, amount: number) => {
+    await delay(500);
+    const index = investors.findIndex(i => i.id === investorId);
+    if (index === -1) throw new Error('Investor not found');
+    const assetIndex = investors[index].assets.findIndex((a: any) => a.assetId === assetId);
+    if (assetIndex === -1) throw new Error('Asset investment not found');
+    investors[index].assets[assetIndex].paid += amount;
+    investors[index].assets[assetIndex].outstanding -= amount;
+    investors[index].totalPaid += amount;
+    investors[index].outstandingBalance -= amount;
+    return clone(investors[index]);
   },
 };
 

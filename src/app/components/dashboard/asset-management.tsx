@@ -57,10 +57,11 @@ import { Progress } from "../ui/progress";
 import { toast } from "sonner";
 
 export function AssetManagement() {
+  const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
-  const [filterSource, setFilterSource] = useState<string>("all");
+  const [filterCompany, setFilterCompany] = useState<string>("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -68,6 +69,7 @@ export function AssetManagement() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [viewAsset, setViewAsset] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
 
   const [assets, setAssets] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -85,8 +87,13 @@ export function AssetManagement() {
   useEffect(() => {
     async function fetchData() {
       try {
+        const filters: any = {};
+        if (filterPlatform !== 'all') filters.platform = filterPlatform;
+        if (filterType !== 'all') filters.type = filterType;
+        if (filterStatus !== 'all') filters.status = filterStatus;
+        if (filterCompany !== 'all') filters.companyId = filterCompany;
         const [a, c] = await Promise.all([
-          assetsApi.getAll(),
+          assetsApi.getAll(filters),
           companiesApi.getAll(),
         ]);
         setAssets(a);
@@ -96,7 +103,7 @@ export function AssetManagement() {
       }
     }
     fetchData();
-  }, []);
+  }, [filterPlatform, filterType, filterStatus, filterCompany]);
 
   // Form state
   const INITIAL_FORM_DATA = {
@@ -194,23 +201,16 @@ export function AssetManagement() {
   };
 
   const locations = Array.from(new Set(assets.map((a) => a.location)));
+  const platforms = Array.from(new Set(assets.map((a) => a.platform || "BuyOps")));
+  const companyIds = Array.from(new Set(assets.map((a) => a.companyId).filter(Boolean)));
 
   const filteredAssets = assets.filter((asset) => {
-    const typeMatch =
-      filterType === "all" ||
-      asset.type.toLowerCase() === filterType.toLowerCase();
-    const statusMatch =
-      filterStatus === "all" ||
-      String(asset.status || "").toLowerCase() ===
-        String(filterStatus).toLowerCase();
-    const locationMatch =
-      filterLocation === "all" || asset.location === filterLocation;
-    const sourceMatch =
-      filterSource === "all" ||
-      (filterSource === "urbco"
-        ? !!asset.urbcoPropertyId
-        : !asset.urbcoPropertyId);
-    return typeMatch && statusMatch && locationMatch && sourceMatch;
+    const platformMatch = filterPlatform === "all" || asset.platform === filterPlatform;
+    const typeMatch = filterType === "all" || asset.type.toLowerCase() === filterType.toLowerCase();
+    const statusMatch = filterStatus === "all" || String(asset.status || "").toLowerCase() === String(filterStatus).toLowerCase();
+    const locationMatch = filterLocation === "all" || asset.location === filterLocation;
+    const companyMatch = filterCompany === "all" || asset.companyId === filterCompany;
+    return platformMatch && typeMatch && statusMatch && locationMatch && companyMatch;
   });
 
   const totalSteps = 9;
@@ -275,8 +275,13 @@ export function AssetManagement() {
 
   const fetchAssets = async () => {
     try {
+      const filters: any = {};
+      if (filterPlatform !== 'all') filters.platform = filterPlatform;
+      if (filterType !== 'all') filters.type = filterType;
+      if (filterStatus !== 'all') filters.status = filterStatus;
+      if (filterCompany !== 'all') filters.companyId = filterCompany;
       const [a, c] = await Promise.all([
-        assetsApi.getAll(),
+        assetsApi.getAll(filters),
         companiesApi.getAll(),
       ]);
       setAssets(a);
@@ -323,8 +328,8 @@ export function AssetManagement() {
     setError(null);
     try {
       const dataToSubmit = statusOverride
-        ? { ...formData, status: statusOverride }
-        : formData;
+        ? { ...formData, status: statusOverride, platform: selectedPlatform }
+        : { ...formData, platform: selectedPlatform };
       const createdAsset = await assetsApi.create(
         buildAssetPayload(dataToSubmit),
       );
@@ -635,17 +640,19 @@ export function AssetManagement() {
       : 100;
 
   const clearFilters = () => {
+    setFilterPlatform("all");
     setFilterType("all");
     setFilterStatus("all");
     setFilterLocation("all");
-    setFilterSource("all");
+    setFilterCompany("all");
   };
 
   const hasActiveFilters =
+    filterPlatform !== "all" ||
     filterType !== "all" ||
     filterStatus !== "all" ||
     filterLocation !== "all" ||
-    filterSource !== "all";
+    filterCompany !== "all";
   const assetTypes = Array.from(
     new Set(assets.map((a) => String(a.type || "").trim()).filter(Boolean)),
   );
@@ -675,13 +682,14 @@ export function AssetManagement() {
                   </Button>
                 )}
               </div>
-              <Dialog
+               <Dialog
                 open={createDialogOpen}
                 onOpenChange={(open) => {
                   setCreateDialogOpen(open);
                   if (!open) {
                     setFormData(INITIAL_FORM_DATA);
                     setCurrentStep(1);
+                    setSelectedPlatform("");
                     setUploadedImages([]);
                     setUploadedDocuments([]);
                     setMarkupPct("");
@@ -698,38 +706,83 @@ export function AssetManagement() {
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
                   <DialogHeader>
-                    <DialogTitle>Create New Asset</DialogTitle>
+                    <DialogTitle>
+                      {!selectedPlatform
+                        ? "Select Asset Platform"
+                        : `Create New Asset — ${selectedPlatform}`}
+                    </DialogTitle>
                     <DialogDescription>
-                      Step {currentStep} of {totalSteps}:{" "}
-                      {currentStep === 1
-                        ? "Asset Identity & Status"
-                        : currentStep === 2
-                          ? "Physical & Functional Details"
-                          : currentStep === 3
-                            ? "Investment Structure"
-                            : currentStep === 4
-                              ? "Pricing & Payment Logic"
-                              : currentStep === 5
-                                ? "Returns & Projections"
-                                : currentStep === 6
-                                  ? "Risk & Transparency"
-                                  : currentStep === 7
-                                    ? "Media & Documentation"
-                                    : currentStep === 8
-                                      ? "Commission Setup"
-                                      : "Review & Publish"}
+                      {!selectedPlatform
+                        ? "Choose which platform this asset belongs to. This determines the entire setup workflow."
+                        : `Step ${currentStep} of ${totalSteps}: ${
+                            currentStep === 1
+                              ? "Asset Identity & Status"
+                              : currentStep === 2
+                                ? selectedPlatform === "URBCO"
+                                  ? "Development & Funding Details"
+                                  : "Physical & Functional Details"
+                                : currentStep === 3
+                                  ? selectedPlatform === "URBCO"
+                                    ? "Investment Structure"
+                                    : "Investment Structure"
+                                  : currentStep === 4
+                                    ? "Pricing & Payment Logic"
+                                    : currentStep === 5
+                                      ? "Returns & Projections"
+                                      : currentStep === 6
+                                        ? "Risk & Transparency"
+                                        : currentStep === 7
+                                          ? "Media & Documentation"
+                                          : currentStep === 8
+                                            ? "Commission Setup"
+                                            : "Review & Publish"
+                          }`}
                     </DialogDescription>
                   </DialogHeader>
 
-                  {/* Progress Bar */}
-                  <div className="px-6">
-                    <Progress
-                      value={(currentStep / totalSteps) * 100}
-                      className="h-2"
-                    />
-                  </div>
-
-                  {/* Form Content */}
+                  {!selectedPlatform ? (
+                    <div className="px-6 py-8">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div
+                          onClick={() => setSelectedPlatform("BuyOps")}
+                          className="p-6 border-2 rounded-xl cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50/50"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
+                            <span className="text-2xl font-bold text-blue-600">B</span>
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">BuyOps</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Completed or ready-to-sell properties. Focus on finalized property sales and completed asset investments.
+                          </p>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• Completed properties</li>
+                            <li>• Under construction with defined products</li>
+                            <li>• Off-plan with finalized specifications</li>
+                            <li>• Land parcels ready for sale</li>
+                          </ul>
+                        </div>
+                        <div
+                          onClick={() => setSelectedPlatform("URBCO")}
+                          className="p-6 border-2 rounded-xl cursor-pointer transition-all hover:border-purple-500 hover:bg-purple-50/50"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
+                            <span className="text-2xl font-bold text-purple-600">U</span>
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">URBCO (OpCo)</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Pre-development and inception-stage projects. Early investors fund projects before completion.
+                          </p>
+                          <ul className="text-xs text-muted-foreground space-y-1">
+                            <li>• Planning & feasibility stage</li>
+                            <li>• Land acquisition phase</li>
+                            <li>• Early construction funding</li>
+                            <li>• Can transfer to BuyOps after completion</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   <div className="flex-1 overflow-y-auto px-6 py-4">
                     {error && (
                       <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
@@ -4557,16 +4610,27 @@ export function AssetManagement() {
                       </Button>
                       <div className="flex gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => {
-                            setEditDialogOpen(false);
-                            setCurrentStep(1);
+                            setSelectedPlatform("");
                             setFormData(INITIAL_FORM_DATA);
-                            setCustomFacilityInput("");
-                            setCustomUnitInput("");
+                            setCurrentStep(1);
                           }}
                         >
+                          ← Change Platform
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setCreateDialogOpen(false)}
+                        >
                           Cancel
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSubmit("draft")}
+                          disabled={loading}
+                        >
+                          Save & Continue Later
                         </Button>
                         {currentStep < totalSteps ? (
                           <Button onClick={nextStep}>
@@ -4574,11 +4638,17 @@ export function AssetManagement() {
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                         ) : (
-                          <Button onClick={handleUpdate}>Update Asset</Button>
+                          <Button onClick={() => handleSubmit()}>
+                            {formData.status === "published"
+                              ? "Publish Asset"
+                              : "Save as Draft"}
+                          </Button>
                         )}
                       </div>
                     </div>
                   </DialogFooter>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
 
@@ -4622,7 +4692,23 @@ export function AssetManagement() {
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Platform
+                </Label>
+                <Select value={filterPlatform} onValueChange={setFilterPlatform}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Platforms</SelectItem>
+                    <SelectItem value="BuyOps">BuyOps</SelectItem>
+                    <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">
                   Asset Type
@@ -4685,16 +4771,19 @@ export function AssetManagement() {
 
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">
-                  Source
+                  Company
                 </Label>
-                <Select value={filterSource} onValueChange={setFilterSource}>
+                <Select value={filterCompany} onValueChange={setFilterCompany}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sources</SelectItem>
-                    <SelectItem value="urbco">From Urbco</SelectItem>
-                    <SelectItem value="direct">Direct</SelectItem>
+                    <SelectItem value="all">All Companies</SelectItem>
+                    {companies.map((comp) => (
+                      <SelectItem key={comp.id} value={comp.id}>
+                        {comp.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -4729,6 +4818,7 @@ export function AssetManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Platform</TableHead>
                   <TableHead>Asset Info</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Location</TableHead>
@@ -4744,17 +4834,21 @@ export function AssetManagement() {
                 {filteredAssets.map((asset) => (
                   <TableRow key={asset.id}>
                     <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          asset.platform === "URBCO"
+                            ? "border-purple-500 text-purple-700 bg-purple-50"
+                            : "border-blue-500 text-blue-700 bg-blue-50"
+                        }
+                      >
+                        {asset.platform || "BuyOps"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{asset.name}</span>
-                          {asset.urbcoPropertyId && (
-                            <Badge
-                              variant="outline"
-                              className="text-xs border-amber-400 text-amber-700 bg-amber-50"
-                            >
-                              From Urbco
-                            </Badge>
-                          )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {asset.company?.name || "—"}
