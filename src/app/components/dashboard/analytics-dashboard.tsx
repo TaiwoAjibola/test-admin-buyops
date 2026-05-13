@@ -38,6 +38,7 @@ import { dashboardApi, transactionsApi } from "../../../utils/api-service";
 import { NairaSign } from "../NairaSign";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Label } from "../ui/label";
+import { formatDate } from "../../../utils/format";
 
 const iconMap = {
   dollarSign: DollarSign,
