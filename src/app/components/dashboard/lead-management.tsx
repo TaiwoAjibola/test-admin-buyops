@@ -662,7 +662,7 @@ export function LeadManagement() {
                   <SelectContent>
                     <SelectItem value="all">All Platforms</SelectItem>
                     <SelectItem value="BuyOps">BuyOps</SelectItem>
-                    <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+                    <SelectItem value="URBCO">URBCO</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select

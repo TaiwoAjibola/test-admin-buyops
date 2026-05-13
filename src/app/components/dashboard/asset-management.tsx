@@ -768,7 +768,7 @@ export function AssetManagement() {
                           <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
                             <span className="text-2xl font-bold text-purple-600">U</span>
                           </div>
-                          <h3 className="text-lg font-semibold mb-2">URBCO (OpCo)</h3>
+                          <h3 className="text-lg font-semibold mb-2">URBCO</h3>
                           <p className="text-sm text-muted-foreground mb-4">
                             Pre-development and inception-stage projects. Early investors fund projects before completion.
                           </p>
@@ -4704,7 +4704,7 @@ export function AssetManagement() {
                   <SelectContent>
                     <SelectItem value="all">All Platforms</SelectItem>
                     <SelectItem value="BuyOps">BuyOps</SelectItem>
-                    <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+                    <SelectItem value="URBCO">URBCO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
