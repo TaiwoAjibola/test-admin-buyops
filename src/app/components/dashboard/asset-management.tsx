@@ -2758,6 +2758,8 @@ export function AssetManagement() {
                       </div>
                     </div>
                   </DialogFooter>
+                    </>
+                  )}
                 </DialogContent>
               </Dialog>
 
@@ -4646,9 +4648,7 @@ export function AssetManagement() {
                         )}
                       </div>
                     </div>
-                  </DialogFooter>
-                    </>
-                  )}
+                   </DialogFooter>
                 </DialogContent>
               </Dialog>
 
