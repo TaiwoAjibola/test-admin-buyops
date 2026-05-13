@@ -7,6 +7,7 @@ import {
   ArrowDown,
   Users,
   Layers,
+  DollarSign,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -37,6 +38,13 @@ import { dashboardApi, transactionsApi } from "../../../utils/api-service";
 import { NairaSign } from "../NairaSign";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Label } from "../ui/label";
+
+const iconMap = {
+  dollarSign: DollarSign,
+  receipt: Receipt,
+  building: Building2,
+  trendingUp: TrendingUp,
+};
 
 const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#6366f1"];
 
