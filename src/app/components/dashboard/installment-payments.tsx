@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 export function InstallmentPayments() {
   const [installmentPlans, setInstallmentPlans] = useState<any[]>([]);
+  const [platformFilter, setPlatformFilter] = useState("all");
   const [soonDueThreshold, setSoonDueThreshold] = useState(7);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
   const [sendReminderOpen, setSendReminderOpen] = useState(false);
@@ -65,7 +66,6 @@ export function InstallmentPayments() {
   useEffect(() => {
     async function fetchPlans() {
       try {
-        // Fetch all installment plans
         const allPlans = await installmentsApi.getAll();
         setInstallmentPlans(allPlans);
       } catch (error) {
@@ -74,6 +74,10 @@ export function InstallmentPayments() {
     }
     fetchPlans();
   }, []);
+
+  const filteredPlans = platformFilter === "all"
+    ? installmentPlans
+    : installmentPlans.filter((p) => p.assetPlatform === platformFilter);
 
   useEffect(() => {
     if (!selectedPlan) return;
@@ -553,6 +557,19 @@ export function InstallmentPayments() {
       </div>
 
       {/* Payment Plans Table */}
+      <div className="flex items-center gap-4 mb-4">
+        <Label className="text-sm">Platform:</Label>
+        <Select value={platformFilter} onValueChange={setPlatformFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Platforms</SelectItem>
+            <SelectItem value="BuyOps">BuyOps</SelectItem>
+            <SelectItem value="URBCO">URBCO</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">All Plans</TabsTrigger>
@@ -580,6 +597,7 @@ export function InstallmentPayments() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Platform</TableHead>
                     <TableHead>Plan ID</TableHead>
                     <TableHead>Asset</TableHead>
                     <TableHead>Buyer</TableHead>
@@ -593,7 +611,7 @@ export function InstallmentPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {installmentPlans.map((plan) => {
+                  {filteredPlans.map((plan) => {
                     const progress = (
                       ((plan.totalAmount - plan.remainingBalance) /
                         plan.totalAmount) *
@@ -602,13 +620,25 @@ export function InstallmentPayments() {
                     const outstanding = plan.remainingBalance - plan.paidAmount;
                     return (
                       <TableRow key={plan.id}>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              plan.assetPlatform === "URBCO"
+                                ? "border-purple-500 text-purple-700"
+                                : "border-blue-500 text-blue-700"
+                            }
+                          >
+                            {plan.assetPlatform || "BuyOps"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="font-mono text-sm">
                           {plan.serialId || plan.id}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {plan.asset}
+                          {plan.assetName || plan.asset}
                         </TableCell>
-                        <TableCell>{plan.buyer}</TableCell>
+                        <TableCell>{plan.buyerName || plan.buyer}</TableCell>
                         <TableCell className="font-medium">
                           ₦{plan.totalAmount.toLocaleString()}
                         </TableCell>
