@@ -75,6 +75,7 @@ export function LeadManagement() {
   );
   const [selectedCluster, setSelectedCluster] = useState("");
   const [sourceFilter, setSourceFilter] = useState<LeadSource | "all">("all");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
 
   const [clusters, setClusters] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
@@ -115,10 +116,19 @@ export function LeadManagement() {
   );
   const availableLeads = leads.filter((lead) => lead.status === "available");
 
-  const allLeadsFiltered =
+  const applyPlatformFilter = (leadsList: any[]) => {
+    if (platformFilter === "all") return leadsList;
+    return leadsList.filter((lead) => {
+      const assetPlatform = lead.asset?.platform || "BuyOps";
+      return assetPlatform === platformFilter;
+    });
+  };
+
+  const allLeadsFiltered = applyPlatformFilter(
     sourceFilter === "all"
       ? leads
-      : leads.filter((lead) => lead.leadSource === sourceFilter);
+      : leads.filter((lead) => lead.leadSource === sourceFilter)
+  );
 
   const getLeadSourceBadgeColor = (leadSource: LeadSource) => {
     switch (leadSource) {
@@ -643,6 +653,19 @@ export function LeadManagement() {
                 </Button>
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <Select
+                  value={platformFilter}
+                  onValueChange={setPlatformFilter}
+                >
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Platforms</SelectItem>
+                    <SelectItem value="BuyOps">BuyOps</SelectItem>
+                    <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
                   value={sourceFilter}
                   onValueChange={(value: LeadSource | "all") =>
                     setSourceFilter(value)
@@ -683,6 +706,7 @@ export function LeadManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Platform</TableHead>
                     <TableHead>Lead ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
@@ -698,7 +722,7 @@ export function LeadManagement() {
                   {allLeadsFiltered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No leads found for the selected source
@@ -707,6 +731,18 @@ export function LeadManagement() {
                   ) : (
                     allLeadsFiltered.map((lead) => (
                       <TableRow key={lead.id}>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              lead.asset?.platform === "URBCO"
+                                ? "border-purple-500 text-purple-700"
+                                : "border-blue-500 text-blue-700"
+                            }
+                          >
+                            {lead.asset?.platform || "BuyOps"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="font-mono text-sm">
                           {lead.serialId || lead.id}
                         </TableCell>
