@@ -6,6 +6,7 @@ import { Bell, CheckCheck, Info, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect } from "react";
 import { notificationsApi } from "../../utils/api-service";
 import { ScrollArea } from "./ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface Notification {
   id: string;
@@ -13,6 +14,7 @@ interface Notification {
   title: string;
   message: string;
   type: "INFO" | "SUCCESS" | "WARNING" | "ERROR";
+  platform?: string;
   read: boolean;
   createdAt: string;
 }
@@ -21,6 +23,7 @@ export function NotificationsPopover() {
   const [notificationsList, setNotificationsList] = useState<Notification[]>(
     [],
   );
+  const [platformFilter, setPlatformFilter] = useState("all");
 
   useEffect(() => {
     async function fetchNotifications() {
@@ -34,8 +37,12 @@ export function NotificationsPopover() {
     fetchNotifications();
   }, []);
 
-  const unreadCount = notificationsList.filter((n) => !n.read).length;
-  const unreadNotifications = notificationsList.filter((n) => !n.read);
+  const filteredNotifications = platformFilter === "all"
+    ? notificationsList
+    : notificationsList.filter((n) => n.platform === platformFilter);
+
+  const unreadCount = filteredNotifications.filter((n) => !n.read).length;
+  const unreadNotifications = filteredNotifications.filter((n) => !n.read);
 
   const markAsRead = (id: string) => {
     notificationsApi
@@ -124,17 +131,29 @@ export function NotificationsPopover() {
                 : "You're all caught up"}
             </p>
           </div>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={markAllAsRead}
-              className="text-xs h-8"
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="w-[120px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="BuyOps">BuyOps</SelectItem>
+                <SelectItem value="URBCO">URBCO</SelectItem>
+              </SelectContent>
+            </Select>
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={markAllAsRead}
+                className="text-xs h-8"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="h-[400px]">
           <div className="divide-y divide-border">
@@ -176,6 +195,18 @@ export function NotificationsPopover() {
                         {notification.message}
                       </p>
                       <div className="flex items-center gap-2">
+                        {notification.platform && (
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              notification.platform === "URBCO"
+                                ? "border-purple-500 text-purple-700"
+                                : "border-blue-500 text-blue-700"
+                            }`}
+                          >
+                            {notification.platform}
+                          </Badge>
+                        )}
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground capitalize">
                           {notification.type.toLowerCase()}
                         </span>

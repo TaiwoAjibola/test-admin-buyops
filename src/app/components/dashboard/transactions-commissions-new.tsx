@@ -52,6 +52,7 @@ export function TransactionsCommissions() {
 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [platformFilter, setPlatformFilter] = useState("all");
 
   // State for month filters
   const [selectedTransactionMonth, setSelectedTransactionMonth] = useState(
@@ -74,6 +75,10 @@ export function TransactionsCommissions() {
     }
     fetchTransactions();
   }, [selectedTransactionMonth]);
+
+  const filteredTransactions = platformFilter === "all"
+    ? transactions
+    : transactions.filter((t) => t.assetPlatform === platformFilter);
 
   // State for selected commissions to send
   const [selectedCommissions, setSelectedCommissions] = useState<Set<string>>(
@@ -384,6 +389,30 @@ export function TransactionsCommissions() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <Label
+                      htmlFor="platform-filter"
+                      className="text-sm whitespace-nowrap"
+                    >
+                      Platform:
+                    </Label>
+                    <Select
+                      value={platformFilter}
+                      onValueChange={setPlatformFilter}
+                    >
+                      <SelectTrigger
+                        id="platform-filter"
+                        className="w-[160px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Platforms</SelectItem>
+                        <SelectItem value="BuyOps">BuyOps</SelectItem>
+                        <SelectItem value="URBCO">URBCO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label
                       htmlFor="transaction-month"
                       className="text-sm whitespace-nowrap"
                     >
@@ -420,6 +449,7 @@ export function TransactionsCommissions() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Platform</TableHead>
                       <TableHead>Transaction ID</TableHead>
                       <TableHead>Asset</TableHead>
                       <TableHead>Buyer</TableHead>
@@ -435,15 +465,27 @@ export function TransactionsCommissions() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.map((transaction) => (
+                    {filteredTransactions.map((transaction) => (
                       <TableRow key={transaction.id}>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              transaction.assetPlatform === "URBCO"
+                                ? "border-purple-500 text-purple-700"
+                                : "border-blue-500 text-blue-700"
+                            }
+                          >
+                            {transaction.assetPlatform || "BuyOps"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="font-mono text-sm">
                           {transaction.serialId || transaction.id}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {transaction.asset}
+                          {transaction.assetName || transaction.asset}
                         </TableCell>
-                        <TableCell>{transaction.buyer}</TableCell>
+                        <TableCell>{transaction.buyerName || transaction.buyer}</TableCell>
                         <TableCell className="text-sm">
                           {transaction.leadAgent}
                         </TableCell>

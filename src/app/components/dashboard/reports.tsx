@@ -48,6 +48,7 @@ import { reportsApi } from "../../../utils/api-service";
 export function Reports() {
   const [dateRange, setDateRange] = useState("30d");
   const [reportCategory, setReportCategory] = useState("sales");
+  const [platformFilter, setPlatformFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -299,6 +300,21 @@ export function Reports() {
             Export Report
           </Button>
         </div>
+      </div>
+
+      {/* Platform Filter */}
+      <div className="flex items-center gap-4">
+        <Label className="text-sm">Platform:</Label>
+        <Select value={platformFilter} onValueChange={setPlatformFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Platforms</SelectItem>
+            <SelectItem value="BuyOps">BuyOps</SelectItem>
+            <SelectItem value="URBCO">URBCO (OpCo)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tabs for Different Report Categories */}
