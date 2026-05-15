@@ -107,7 +107,6 @@ export function AssetManagement() {
 
   // Form state
   const INITIAL_FORM_DATA = {
-    // Step 1
     name: "",
     referenceCode: "",
     type: "",
@@ -119,7 +118,6 @@ export function AssetManagement() {
     builtSize: "",
     constructionStart: "",
     constructionEnd: "",
-    // Step 2
     propertyCategory: "",
     totalUnits: "",
     availableUnits: "",
@@ -127,13 +125,11 @@ export function AssetManagement() {
     furnishingStatus: "",
     sharedFacilities: [] as string[],
     facilityManagement: true,
-    // Step 3
     ownershipType: "Full",
     fractionTotal: "",
     costPerFraction: "",
     landUnitType: "",
     landUnitCount: "",
-    // Step 4
     basePrice: "",
     markup: "",
     paymentOptions: [] as string[],
@@ -141,7 +137,6 @@ export function AssetManagement() {
     downPaymentAmount: "",
     offPlanDiscount: "",
     stageBasedDiscount: "",
-    // Step 5
     projectedRentalIncome: "",
     rentalFrequency: "Annual",
     operatingCost: "",
@@ -153,7 +148,6 @@ export function AssetManagement() {
     capitalAppreciationMax: "",
     totalReturnsMin: "",
     totalReturnsMax: "",
-    // Step 6
     constructionProgress: "",
     riskLevel: "Low",
     riskFactors: [] as string[],
@@ -161,19 +155,65 @@ export function AssetManagement() {
     offPlanSecurity: "",
     exitLiquidity: "High",
     managementMode: "BuyOps-managed",
-    // Step 7
     images: 0,
     documents: 0,
     virtualTours: 0,
-    // Step 8
     leadCommission: "",
     closerCommission: "",
-    // Step 9
+    status: "draft",
+  };
+
+  const URBCO_INITIAL_FORM_DATA = {
+    assetName: "",
+    assetSlug: "",
+    assetType: "",
+    location: "",
+    propertyDescription: "",
+    projectStatus: "",
+    constructionStart: "",
+    constructionFinish: "",
+    rooms: "",
+    baths: "",
+    squareMeter: "",
+    facilities: [] as string[],
+    amenities: [] as string[],
+    furnishingStatus: "",
+    propertyValue: "",
+    investmentAvailable: "",
+    availableToInvest: "",
+    costPerFraction: "",
+    totalFractions: "",
+    fractionsTaken: "",
+    percentageSold: "",
+    rentPerQuarter: "",
+    rentalStatus: "",
+    rentalFrequency: "",
+    rentalYield: "",
+    rentalYieldAssumption: "",
+    rentalIncomeGuarantee: false,
+    firstDividendDate: "",
+    incomeStartTimeline: "",
+    capitalAppreciationAnnual: "",
+    rentalYieldAnnual: "",
+    returnSources: [] as string[],
+    projectedROI: "",
+    investorsCount: "",
+    fundingProgress: "",
+    discountsClaimed: "",
+    fundingStatus: "",
+    thumbnailImage: null as File | null,
+    galleryImages: [] as File[],
+    videoTour: "",
+    brochurePdf: null as File | null,
     status: "draft",
   };
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+  const [urbcoFormData, setUrbcoFormData] = useState(URBCO_INITIAL_FORM_DATA);
   const [customFacilityInput, setCustomFacilityInput] = useState("");
+  const [urbcoCustomFacilityInput, setUrbcoCustomFacilityInput] = useState("");
+  const [urbcoCustomAmenityInput, setUrbcoCustomAmenityInput] = useState("");
+  const [urbcoCustomReturnSourceInput, setUrbcoCustomReturnSourceInput] = useState("");
   const [customUnitInput, setCustomUnitInput] = useState("");
   const [markupPct, setMarkupPct] = useState("");
   const [customPctInput, setCustomPctInput] = useState("");
@@ -213,7 +253,7 @@ export function AssetManagement() {
     return platformMatch && typeMatch && statusMatch && locationMatch && companyMatch;
   });
 
-  const totalSteps = 9;
+  const totalSteps = selectedPlatform === "URBCO" ? 8 : 9;
 
   const validateStep1 = () => {
     const requiredFields = [
@@ -517,6 +557,59 @@ export function AssetManagement() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateUrbcoFormData = (field: string, value: any) => {
+    setUrbcoFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "assetName" && !prev.assetSlug) {
+        updated.assetSlug = value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      }
+      if (field === "fractionsTaken" || field === "totalFractions") {
+        const taken = parseFloat(field === "fractionsTaken" ? value : prev.fractionsTaken) || 0;
+        const total = parseFloat(field === "totalFractions" ? value : prev.totalFractions) || 0;
+        updated.percentageSold = total > 0 ? ((taken / total) * 100).toFixed(1) : "0";
+        updated.fundingProgress = total > 0 ? ((taken / total) * 100).toFixed(1) : "0";
+      }
+      if (field === "rentPerQuarter" || field === "propertyValue") {
+        const rent = parseFloat(field === "rentPerQuarter" ? value : prev.rentPerQuarter) || 0;
+        const propValue = parseFloat(field === "propertyValue" ? value : prev.propertyValue) || 0;
+        updated.rentalYield = propValue > 0 ? ((rent * 4 / propValue) * 100).toFixed(2) : "0.00";
+      }
+      if (field === "capitalAppreciationAnnual" || field === "rentalYieldAnnual") {
+        const capApp = parseFloat(field === "capitalAppreciationAnnual" ? value : prev.capitalAppreciationAnnual) || 0;
+        const rentYield = parseFloat(field === "rentalYieldAnnual" ? value : prev.rentalYieldAnnual) || 0;
+        updated.projectedROI = (capApp + rentYield).toFixed(2);
+      }
+      return updated;
+    });
+  };
+
+  const toggleUrbcoFacility = (facility: string) => {
+    setUrbcoFormData((prev) => ({
+      ...prev,
+      facilities: prev.facilities.includes(facility)
+        ? prev.facilities.filter((f) => f !== facility)
+        : [...prev.facilities, facility],
+    }));
+  };
+
+  const toggleUrbcoAmenity = (amenity: string) => {
+    setUrbcoFormData((prev) => ({
+      ...prev,
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter((a) => a !== amenity)
+        : [...prev.amenities, amenity],
+    }));
+  };
+
+  const toggleUrbcoReturnSource = (source: string) => {
+    setUrbcoFormData((prev) => ({
+      ...prev,
+      returnSources: prev.returnSources.includes(source)
+        ? prev.returnSources.filter((s) => s !== source)
+        : [...prev.returnSources, source],
+    }));
+  };
+
   const toggleFacility = (facility: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -688,12 +781,17 @@ export function AssetManagement() {
                   setCreateDialogOpen(open);
                   if (!open) {
                     setFormData(INITIAL_FORM_DATA);
+                    setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
                     setCurrentStep(1);
                     setSelectedPlatform("");
                     setUploadedImages([]);
                     setUploadedDocuments([]);
                     setMarkupPct("");
                     setCustomPctInput("");
+                    setCustomFacilityInput("");
+                    setUrbcoCustomFacilityInput("");
+                    setUrbcoCustomAmenityInput("");
+                    setUrbcoCustomReturnSourceInput("");
                     setError(null);
                   }
                 }}
@@ -714,29 +812,43 @@ export function AssetManagement() {
                     <DialogDescription>
                       {!selectedPlatform
                         ? "Choose which platform this asset belongs to. This determines the entire setup workflow."
-                        : `Step ${currentStep} of ${totalSteps}: ${
-                            currentStep === 1
-                              ? "Asset Identity & Status"
-                              : currentStep === 2
-                                ? selectedPlatform === "URBCO"
-                                  ? "Development & Funding Details"
-                                  : "Physical & Functional Details"
-                                : currentStep === 3
-                                  ? selectedPlatform === "URBCO"
-                                    ? "Investment Structure"
-                                    : "Investment Structure"
-                                  : currentStep === 4
-                                    ? "Pricing & Payment Logic"
-                                    : currentStep === 5
-                                      ? "Returns & Projections"
-                                      : currentStep === 6
-                                        ? "Risk & Transparency"
-                                        : currentStep === 7
-                                          ? "Media & Documentation"
-                                          : currentStep === 8
-                                            ? "Commission Setup"
+                        : selectedPlatform === "URBCO"
+                          ? `Step ${currentStep} of ${totalSteps}: ${
+                              currentStep === 1
+                                ? "Basic Asset Information"
+                                : currentStep === 2
+                                  ? "Property Specifications"
+                                  : currentStep === 3
+                                    ? "Financial Information"
+                                    : currentStep === 4
+                                      ? "Rental Information"
+                                      : currentStep === 5
+                                        ? "Investment Return Information"
+                                        : currentStep === 6
+                                          ? "Funding Information"
+                                          : currentStep === 7
+                                            ? "Media & Documentation"
                                             : "Review & Publish"
-                          }`}
+                            }`
+                          : `Step ${currentStep} of ${totalSteps}: ${
+                              currentStep === 1
+                                ? "Asset Identity & Status"
+                                : currentStep === 2
+                                  ? "Physical & Functional Details"
+                                  : currentStep === 3
+                                    ? "Investment Structure"
+                                    : currentStep === 4
+                                      ? "Pricing & Payment Logic"
+                                      : currentStep === 5
+                                        ? "Returns & Projections"
+                                        : currentStep === 6
+                                          ? "Risk & Transparency"
+                                          : currentStep === 7
+                                            ? "Media & Documentation"
+                                            : currentStep === 8
+                                              ? "Commission Setup"
+                                              : "Review & Publish"
+                            }`}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -789,8 +901,753 @@ export function AssetManagement() {
                         {error}
                       </div>
                     )}
-                    {/* Step 1: Asset Identity & Status */}
+                    {selectedPlatform === "URBCO" ? (
+                      <>
+                    {/* URBCO Step 1: Basic Asset Information */}
                     {currentStep === 1 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-assetName">Asset Name *</Label>
+                            <Input
+                              id="urbco-assetName"
+                              value={urbcoFormData.assetName}
+                              onChange={(e) => updateUrbcoFormData("assetName", e.target.value)}
+                              placeholder="e.g., Marina Heights Tower"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-assetSlug">Asset Slug</Label>
+                            <Input
+                              id="urbco-assetSlug"
+                              value={urbcoFormData.assetSlug}
+                              onChange={(e) => updateUrbcoFormData("assetSlug", e.target.value)}
+                              placeholder="Auto-generated from name"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-assetType">Asset Type *</Label>
+                            <Select
+                              value={urbcoFormData.assetType}
+                              onValueChange={(val) => updateUrbcoFormData("assetType", val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Hostel Development">Hostel Development</SelectItem>
+                                <SelectItem value="Residential">Residential</SelectItem>
+                                <SelectItem value="Commercial">Commercial</SelectItem>
+                                <SelectItem value="Mixed-use">Mixed-use</SelectItem>
+                                <SelectItem value="Land">Land</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-projectStatus">Project Status *</Label>
+                            <Select
+                              value={urbcoFormData.projectStatus}
+                              onValueChange={(val) => updateUrbcoFormData("projectStatus", val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Design">Design</SelectItem>
+                                <SelectItem value="Foundation">Foundation</SelectItem>
+                                <SelectItem value="Under Construction">Under Construction</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="urbco-location">Location *</Label>
+                          <Input
+                            id="urbco-location"
+                            value={urbcoFormData.location}
+                            onChange={(e) => updateUrbcoFormData("location", e.target.value)}
+                            placeholder="e.g., Lagos, Nigeria"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="urbco-propertyDescription">Property Description</Label>
+                          <Textarea
+                            id="urbco-propertyDescription"
+                            value={urbcoFormData.propertyDescription}
+                            onChange={(e) => updateUrbcoFormData("propertyDescription", e.target.value)}
+                            placeholder="Describe the property..."
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-constructionStart">Construction Start</Label>
+                            <Input
+                              id="urbco-constructionStart"
+                              value={urbcoFormData.constructionStart}
+                              onChange={(e) => updateUrbcoFormData("constructionStart", e.target.value)}
+                              placeholder="e.g., September 2023"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-constructionFinish">Construction Finish</Label>
+                            <Input
+                              id="urbco-constructionFinish"
+                              value={urbcoFormData.constructionFinish}
+                              onChange={(e) => updateUrbcoFormData("constructionFinish", e.target.value)}
+                              placeholder="e.g., September 2024"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 2: Property Specifications */}
+                    {currentStep === 2 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-rooms">Rooms</Label>
+                            <Input
+                              id="urbco-rooms"
+                              type="number"
+                              value={urbcoFormData.rooms}
+                              onChange={(e) => updateUrbcoFormData("rooms", e.target.value)}
+                              placeholder="120"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-baths">Baths</Label>
+                            <Input
+                              id="urbco-baths"
+                              value={urbcoFormData.baths}
+                              onChange={(e) => updateUrbcoFormData("baths", e.target.value)}
+                              placeholder="e.g., All En-suite"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-squareMeter">Square Meter</Label>
+                            <Input
+                              id="urbco-squareMeter"
+                              type="number"
+                              value={urbcoFormData.squareMeter}
+                              onChange={(e) => updateUrbcoFormData("squareMeter", e.target.value)}
+                              placeholder="5000"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">Facilities</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {["Pool", "Gym", "Parking", "Security", "Private Beach", "Spa", "Retail", "Meeting Rooms", "Elevators"].map((facility) => (
+                              <div key={facility} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`urbco-facility-${facility}`}
+                                  checked={urbcoFormData.facilities.includes(facility)}
+                                  onCheckedChange={() => toggleUrbcoFacility(facility)}
+                                />
+                                <label htmlFor={`urbco-facility-${facility}`} className="text-sm cursor-pointer">
+                                  {facility}
+                                </label>
+                              </div>
+                            ))}
+                            {urbcoFormData.facilities
+                              .filter((f) => !["Pool", "Gym", "Parking", "Security", "Private Beach", "Spa", "Retail", "Meeting Rooms", "Elevators"].includes(f))
+                              .map((customF) => (
+                                <div key={customF} className="flex items-center space-x-2">
+                                  <Checkbox id={`urbco-facility-custom-${customF}`} checked onCheckedChange={() => toggleUrbcoFacility(customF)} />
+                                  <label htmlFor={`urbco-facility-custom-${customF}`} className="text-sm cursor-pointer">{customF}</label>
+                                </div>
+                              ))}
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Input
+                              value={urbcoCustomFacilityInput}
+                              onChange={(e) => setUrbcoCustomFacilityInput(e.target.value)}
+                              placeholder="Add custom facility"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (urbcoCustomFacilityInput.trim()) {
+                                  toggleUrbcoFacility(urbcoCustomFacilityInput.trim());
+                                  setUrbcoCustomFacilityInput("");
+                                }
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">Amenities</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {["WiFi", "Laundry", "Cleaning", "Maintenance", "Concierge", "Shuttle"].map((amenity) => (
+                              <div key={amenity} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`urbco-amenity-${amenity}`}
+                                  checked={urbcoFormData.amenities.includes(amenity)}
+                                  onCheckedChange={() => toggleUrbcoAmenity(amenity)}
+                                />
+                                <label htmlFor={`urbco-amenity-${amenity}`} className="text-sm cursor-pointer">
+                                  {amenity}
+                                </label>
+                              </div>
+                            ))}
+                            {urbcoFormData.amenities
+                              .filter((a) => !["WiFi", "Laundry", "Cleaning", "Maintenance", "Concierge", "Shuttle"].includes(a))
+                              .map((customA) => (
+                                <div key={customA} className="flex items-center space-x-2">
+                                  <Checkbox id={`urbco-amenity-custom-${customA}`} checked onCheckedChange={() => toggleUrbcoAmenity(customA)} />
+                                  <label htmlFor={`urbco-amenity-custom-${customA}`} className="text-sm cursor-pointer">{customA}</label>
+                                </div>
+                              ))}
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Input
+                              value={urbcoCustomAmenityInput}
+                              onChange={(e) => setUrbcoCustomAmenityInput(e.target.value)}
+                              placeholder="Add custom amenity"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (urbcoCustomAmenityInput.trim()) {
+                                  toggleUrbcoAmenity(urbcoCustomAmenityInput.trim());
+                                  setUrbcoCustomAmenityInput("");
+                                }
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="urbco-furnishingStatus">Furnishing Status</Label>
+                          <Select
+                            value={urbcoFormData.furnishingStatus}
+                            onValueChange={(val) => updateUrbcoFormData("furnishingStatus", val)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Unfurnished">Unfurnished</SelectItem>
+                              <SelectItem value="Semi-furnished">Semi-furnished</SelectItem>
+                              <SelectItem value="Fully furnished">Fully furnished</SelectItem>
+                              <SelectItem value="N/A">N/A</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 3: Financial Information */}
+                    {currentStep === 3 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-propertyValue">Property Value (₦)</Label>
+                            <Input
+                              id="urbco-propertyValue"
+                              type="number"
+                              value={urbcoFormData.propertyValue}
+                              onChange={(e) => updateUrbcoFormData("propertyValue", e.target.value)}
+                              placeholder="500000000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-investmentAvailable">Investment Available (₦)</Label>
+                            <Input
+                              id="urbco-investmentAvailable"
+                              type="number"
+                              value={urbcoFormData.investmentAvailable}
+                              onChange={(e) => updateUrbcoFormData("investmentAvailable", e.target.value)}
+                              placeholder="200000000"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-availableToInvest">Available to Invest (₦)</Label>
+                            <Input
+                              id="urbco-availableToInvest"
+                              type="number"
+                              value={urbcoFormData.availableToInvest}
+                              onChange={(e) => updateUrbcoFormData("availableToInvest", e.target.value)}
+                              placeholder="150000000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-costPerFraction">Cost Per Fraction (₦)</Label>
+                            <Input
+                              id="urbco-costPerFraction"
+                              type="number"
+                              value={urbcoFormData.costPerFraction}
+                              onChange={(e) => updateUrbcoFormData("costPerFraction", e.target.value)}
+                              placeholder="500000"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-totalFractions">Total Fractions</Label>
+                            <Input
+                              id="urbco-totalFractions"
+                              type="number"
+                              value={urbcoFormData.totalFractions}
+                              onChange={(e) => updateUrbcoFormData("totalFractions", e.target.value)}
+                              placeholder="1000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-fractionsTaken">Fractions Taken</Label>
+                            <Input
+                              id="urbco-fractionsTaken"
+                              type="number"
+                              value={urbcoFormData.fractionsTaken}
+                              onChange={(e) => updateUrbcoFormData("fractionsTaken", e.target.value)}
+                              placeholder="350"
+                            />
+                          </div>
+                          <div>
+                            <Label>Percentage Sold</Label>
+                            <div className="p-2 bg-muted rounded text-sm font-semibold">
+                              {urbcoFormData.percentageSold || "0"}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 4: Rental Information */}
+                    {currentStep === 4 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-rentPerQuarter">Rent Per Quarter (₦)</Label>
+                            <Input
+                              id="urbco-rentPerQuarter"
+                              type="number"
+                              value={urbcoFormData.rentPerQuarter}
+                              onChange={(e) => updateUrbcoFormData("rentPerQuarter", e.target.value)}
+                              placeholder="15000000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-rentalStatus">Rental Status</Label>
+                            <Select
+                              value={urbcoFormData.rentalStatus}
+                              onValueChange={(val) => updateUrbcoFormData("rentalStatus", val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="Guaranteed">Guaranteed</SelectItem>
+                                <SelectItem value="N/A">N/A</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-rentalFrequency">Rental Frequency</Label>
+                            <Select
+                              value={urbcoFormData.rentalFrequency}
+                              onValueChange={(val) => updateUrbcoFormData("rentalFrequency", val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Monthly">Monthly</SelectItem>
+                                <SelectItem value="Quarterly">Quarterly</SelectItem>
+                                <SelectItem value="Annual">Annual</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Rental Yield</Label>
+                            <div className="p-2 bg-muted rounded text-sm font-semibold">
+                              {urbcoFormData.rentalYield || "0.00"}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="urbco-rentalYieldAssumption">Rental Yield Assumption</Label>
+                          <Input
+                            id="urbco-rentalYieldAssumption"
+                            value={urbcoFormData.rentalYieldAssumption}
+                            onChange={(e) => updateUrbcoFormData("rentalYieldAssumption", e.target.value)}
+                            placeholder="e.g., Based on 80% occupancy rate"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">Rental Income Guarantee</Label>
+                            <p className="text-xs text-muted-foreground mt-1">Is rental income guaranteed?</p>
+                          </div>
+                          <Switch
+                            checked={urbcoFormData.rentalIncomeGuarantee}
+                            onCheckedChange={(val) => updateUrbcoFormData("rentalIncomeGuarantee", val)}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-firstDividendDate">First Dividend Date</Label>
+                            <Input
+                              id="urbco-firstDividendDate"
+                              type="date"
+                              value={urbcoFormData.firstDividendDate}
+                              onChange={(e) => updateUrbcoFormData("firstDividendDate", e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-incomeStartTimeline">Income Start Timeline</Label>
+                            <Input
+                              id="urbco-incomeStartTimeline"
+                              value={urbcoFormData.incomeStartTimeline}
+                              onChange={(e) => updateUrbcoFormData("incomeStartTimeline", e.target.value)}
+                              placeholder="e.g., Q1 2025"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 5: Investment Return Information */}
+                    {currentStep === 5 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-capitalAppreciationAnnual">Capital Appreciation Annual (%)</Label>
+                            <Input
+                              id="urbco-capitalAppreciationAnnual"
+                              type="number"
+                              step="0.1"
+                              value={urbcoFormData.capitalAppreciationAnnual}
+                              onChange={(e) => updateUrbcoFormData("capitalAppreciationAnnual", e.target.value)}
+                              placeholder="8.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-rentalYieldAnnual">Rental Yield Annual (%)</Label>
+                            <Input
+                              id="urbco-rentalYieldAnnual"
+                              type="number"
+                              step="0.1"
+                              value={urbcoFormData.rentalYieldAnnual}
+                              onChange={(e) => updateUrbcoFormData("rentalYieldAnnual", e.target.value)}
+                              placeholder="12.0"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">Return Sources</Label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {["Rental Income", "Capital Appreciation", "Dividend Distribution"].map((source) => (
+                              <div key={source} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`urbco-return-${source}`}
+                                  checked={urbcoFormData.returnSources.includes(source)}
+                                  onCheckedChange={() => toggleUrbcoReturnSource(source)}
+                                />
+                                <label htmlFor={`urbco-return-${source}`} className="text-sm cursor-pointer">
+                                  {source}
+                                </label>
+                              </div>
+                            ))}
+                            {urbcoFormData.returnSources
+                              .filter((s) => !["Rental Income", "Capital Appreciation", "Dividend Distribution"].includes(s))
+                              .map((customS) => (
+                                <div key={customS} className="flex items-center space-x-2">
+                                  <Checkbox id={`urbco-return-custom-${customS}`} checked onCheckedChange={() => toggleUrbcoReturnSource(customS)} />
+                                  <label htmlFor={`urbco-return-custom-${customS}`} className="text-sm cursor-pointer">{customS}</label>
+                                </div>
+                              ))}
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Input
+                              value={urbcoCustomReturnSourceInput}
+                              onChange={(e) => setUrbcoCustomReturnSourceInput(e.target.value)}
+                              placeholder="Add custom return source"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (urbcoCustomReturnSourceInput.trim()) {
+                                  toggleUrbcoReturnSource(urbcoCustomReturnSourceInput.trim());
+                                  setUrbcoCustomReturnSourceInput("");
+                                }
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <h4 className="text-sm font-medium text-accent mb-2">Projected ROI</h4>
+                          <div className="text-3xl font-semibold text-accent">
+                            {urbcoFormData.projectedROI || "0.00"}%
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Capital Appreciation + Rental Yield</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 6: Funding Information */}
+                    {currentStep === 6 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-investorsCount">Investors Count</Label>
+                            <Input
+                              id="urbco-investorsCount"
+                              type="number"
+                              value={urbcoFormData.investorsCount}
+                              onChange={(e) => updateUrbcoFormData("investorsCount", e.target.value)}
+                              placeholder="150"
+                            />
+                          </div>
+                          <div>
+                            <Label>Funding Progress</Label>
+                            <div className="p-2 bg-muted rounded text-sm font-semibold">
+                              {urbcoFormData.fundingProgress || "0"}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-muted rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Funding Progress</span>
+                            <span className="text-sm font-semibold">{urbcoFormData.fundingProgress || "0"}%</span>
+                          </div>
+                          <Progress value={parseFloat(urbcoFormData.fundingProgress) || 0} className="h-2" />
+                          <p className="text-xs text-muted-foreground mt-2">Auto-calculated from Fractions Taken / Total Fractions</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="urbco-discountsClaimed">Discounts Claimed (%)</Label>
+                            <Input
+                              id="urbco-discountsClaimed"
+                              type="number"
+                              step="0.1"
+                              value={urbcoFormData.discountsClaimed}
+                              onChange={(e) => updateUrbcoFormData("discountsClaimed", e.target.value)}
+                              placeholder="5.0"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="urbco-fundingStatus">Funding Status</Label>
+                            <Select
+                              value={urbcoFormData.fundingStatus}
+                              onValueChange={(val) => updateUrbcoFormData("fundingStatus", val)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Open">Open</SelectItem>
+                                <SelectItem value="Closing Soon">Closing Soon</SelectItem>
+                                <SelectItem value="Fully Funded">Fully Funded</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 7: Media & Documentation */}
+                    {currentStep === 7 && (
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Thumbnail Image</h4>
+                          <p className="text-sm text-muted-foreground mb-3">Main property image</p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              updateUrbcoFormData("thumbnailImage", file);
+                            }}
+                            className="hidden"
+                            id="urbco-thumbnail"
+                          />
+                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-thumbnail")?.click()}>
+                            Choose File
+                          </Button>
+                          {urbcoFormData.thumbnailImage && (
+                            <p className="text-xs text-muted-foreground mt-2">{urbcoFormData.thumbnailImage.name}</p>
+                          )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Gallery Images</h4>
+                          <p className="text-sm text-muted-foreground mb-3">Multiple property images</p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              updateUrbcoFormData("galleryImages", [...urbcoFormData.galleryImages, ...files]);
+                            }}
+                            className="hidden"
+                            id="urbco-gallery"
+                          />
+                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-gallery")?.click()}>
+                            Choose Files
+                          </Button>
+                          {urbcoFormData.galleryImages.length > 0 && (
+                            <div className="mt-4 space-y-2 text-left">
+                              {urbcoFormData.galleryImages.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                                  <span className="truncate flex-1">{file.name}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => updateUrbcoFormData("galleryImages", urbcoFormData.galleryImages.filter((_, i) => i !== index))}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="urbco-videoTour">Video Tour URL</Label>
+                          <Input
+                            id="urbco-videoTour"
+                            value={urbcoFormData.videoTour}
+                            onChange={(e) => updateUrbcoFormData("videoTour", e.target.value)}
+                            placeholder="https://youtube.com/..."
+                          />
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Brochure PDF</h4>
+                          <p className="text-sm text-muted-foreground mb-3">Property brochure document</p>
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              updateUrbcoFormData("brochurePdf", file);
+                            }}
+                            className="hidden"
+                            id="urbco-brochure"
+                          />
+                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-brochure")?.click()}>
+                            Choose File
+                          </Button>
+                          {urbcoFormData.brochurePdf && (
+                            <p className="text-xs text-muted-foreground mt-2">{urbcoFormData.brochurePdf.name}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* URBCO Step 8: Review & Publish */}
+                    {currentStep === 8 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h3 className="font-semibold text-lg mb-4">Asset Summary</h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">Asset Name:</span>
+                              <span className="font-medium text-right">{urbcoFormData.assetName || "—"}</span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">Asset Slug:</span>
+                              <span className="font-medium">{urbcoFormData.assetSlug || "—"}</span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">Asset Type:</span>
+                              <Badge variant="outline">{urbcoFormData.assetType || "—"}</Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">Location:</span>
+                              <span className="font-medium text-right">{urbcoFormData.location || "—"}</span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">Project Status:</span>
+                              <span className="font-medium">{urbcoFormData.projectStatus || "—"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <h4 className="font-medium text-accent mb-3">Financial Summary</h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm">Property Value:</span>
+                              <span className="font-semibold">₦{Number(urbcoFormData.propertyValue || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Cost Per Fraction:</span>
+                              <span className="font-semibold">₦{Number(urbcoFormData.costPerFraction || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Funding Progress:</span>
+                              <span className="font-semibold">{urbcoFormData.fundingProgress || "0"}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Projected ROI:</span>
+                              <span className="font-semibold text-accent">{urbcoFormData.projectedROI || "0.00"}%</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">Publish Status</Label>
+                            <p className="text-xs text-muted-foreground mt-1">Toggle to publish asset immediately</p>
+                          </div>
+                          <Switch
+                            checked={urbcoFormData.status === "published"}
+                            onCheckedChange={(val) => updateUrbcoFormData("status", val ? "published" : "draft")}
+                          />
+                        </div>
+                      </div>
+                    )}
+                      </>
+                    ) : (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -2728,32 +3585,70 @@ export function AssetManagement() {
                             setCreateDialogOpen(false);
                             setCurrentStep(1);
                             setFormData(INITIAL_FORM_DATA);
+                            setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
                             setCustomFacilityInput("");
                             setCustomUnitInput("");
+                            setUrbcoCustomFacilityInput("");
+                            setUrbcoCustomAmenityInput("");
+                            setUrbcoCustomReturnSourceInput("");
                             setMarkupPct("");
                             setCustomPctInput("");
                           }}
                         >
                           Cancel
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleSubmit("draft")}
-                          disabled={loading}
-                        >
-                          Save & Continue Later
-                        </Button>
-                        {currentStep < totalSteps ? (
-                          <Button onClick={nextStep}>
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </Button>
+                        {selectedPlatform === "URBCO" ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                toast.success("URBCO asset saved as draft");
+                                setCreateDialogOpen(false);
+                                setCurrentStep(1);
+                                setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
+                              }}
+                              disabled={loading}
+                            >
+                              Save & Continue Later
+                            </Button>
+                            {currentStep < totalSteps ? (
+                              <Button onClick={nextStep}>
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            ) : (
+                              <Button onClick={() => {
+                                toast.success("URBCO asset created successfully");
+                                setCreateDialogOpen(false);
+                                setCurrentStep(1);
+                                setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
+                              }}>
+                                {urbcoFormData.status === "published" ? "Publish Asset" : "Save as Draft"}
+                              </Button>
+                            )}
+                          </>
                         ) : (
-                          <Button onClick={() => handleSubmit()}>
-                            {formData.status === "published"
-                              ? "Publish Asset"
-                              : "Save as Draft"}
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleSubmit("draft")}
+                              disabled={loading}
+                            >
+                              Save & Continue Later
+                            </Button>
+                            {currentStep < totalSteps ? (
+                              <Button onClick={nextStep}>
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            ) : (
+                              <Button onClick={() => handleSubmit()}>
+                                {formData.status === "published"
+                                  ? "Publish Asset"
+                                  : "Save as Draft"}
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
