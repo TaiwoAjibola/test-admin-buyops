@@ -290,10 +290,13 @@ export function AssetManagement() {
   };
 
   const nextStep = () => {
+    if (selectedPlatform === "URBCO") {
+      if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+      return;
+    }
     if (currentStep === 1 && !validateStep1()) {
       return;
     }
-    // Skip step 2 (Physical & Functional Details) for Land type
     if (currentStep === 1 && formData.type === "Land") {
       setCurrentStep(3);
       return;
@@ -302,7 +305,10 @@ export function AssetManagement() {
   };
 
   const prevStep = () => {
-    // Skip step 2 when going back if type is Land
+    if (selectedPlatform === "URBCO") {
+      if (currentStep > 1) setCurrentStep(currentStep - 1);
+      return;
+    }
     if (currentStep === 3 && formData.type === "Land") {
       setCurrentStep(1);
       return;
@@ -988,21 +994,21 @@ export function AssetManagement() {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="urbco-constructionStart">Construction Start</Label>
+                            <Label htmlFor="urbco-constructionStart">Construction Start Date</Label>
                             <Input
                               id="urbco-constructionStart"
+                              type="date"
                               value={urbcoFormData.constructionStart}
                               onChange={(e) => updateUrbcoFormData("constructionStart", e.target.value)}
-                              placeholder="e.g., September 2023"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="urbco-constructionFinish">Construction Finish</Label>
+                            <Label htmlFor="urbco-constructionFinish">Construction Finish Date</Label>
                             <Input
                               id="urbco-constructionFinish"
+                              type="date"
                               value={urbcoFormData.constructionFinish}
                               onChange={(e) => updateUrbcoFormData("constructionFinish", e.target.value)}
-                              placeholder="e.g., September 2024"
                             />
                           </div>
                         </div>

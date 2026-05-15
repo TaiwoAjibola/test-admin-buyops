@@ -7,7 +7,6 @@ import { Users as UserManagement } from "./components/dashboard/users";
 import { TransactionsCommissions } from "./components/dashboard/transactions-commissions-new";
 import { Reports } from "./components/dashboard/reports";
 import { InstallmentPayments } from "./components/dashboard/installment-payments";
-import { InvoiceEntries } from "./components/dashboard/invoice-entries";
 import { LeadManagement } from "./components/dashboard/lead-management";
 import { NotificationsPopover } from "./components/notifications-popover";
 import { UserDropdown } from "./components/user-dropdown";
@@ -37,7 +36,6 @@ import {
   Moon,
   Sun,
   Users,
-  FileText,
 } from "lucide-react";
 import {
   BrowserRouter,
@@ -85,11 +83,6 @@ const navigationGroups = [
     name: "Reports",
     id: "reports",
     items: [{ name: "Reports", icon: FileBarChart, id: "reports" }],
-  },
-  {
-    name: "Free Invoice",
-    id: "free-invoice",
-    items: [{ name: "Invoice Entries", icon: FileText, id: "invoices" }],
   },
   {
     name: "Settings",
@@ -304,7 +297,6 @@ function DashboardContent() {
               />
               <Route path="/installments" element={<InstallmentPayments />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/invoices" element={<InvoiceEntries />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/payments/callback" element={<PaymentCallback />} />
