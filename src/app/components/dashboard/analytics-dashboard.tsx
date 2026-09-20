@@ -117,14 +117,14 @@ export function AnalyticsDashboard() {
 
   const platformKpis = kpiData ? [
     {
-      platform: "Opco Foundry",
+      platform: "Urbco Foundry",
       revenue: kpiData.foundryRevenue || kpiData.buyOpsRevenue || 0,
       transactions: kpiData.foundryTransactions || kpiData.buyOpsTransactions || 0,
       assets: kpiData.foundryAssets || kpiData.buyOpsAssets || 0,
       investors: kpiData.foundryInvestors || kpiData.buyOpsInvestors || 0,
     },
     {
-      platform: "Opco Harbor",
+      platform: "Urbco Harbor",
       revenue: kpiData.harborRevenue || kpiData.urbcoRevenue || 0,
       transactions: kpiData.harborTransactions || kpiData.urbcoTransactions || 0,
       assets: kpiData.harborAssets || kpiData.urbcoAssets || 0,
@@ -204,7 +204,7 @@ export function AnalyticsDashboard() {
                 <Badge
                   variant="outline"
                   className={
-                    pk.platform === "Opco Harbor"
+                    pk.platform === "Urbco Harbor"
                       ? "border-purple-500 text-purple-700 bg-purple-50"
                       : "border-blue-500 text-blue-700 bg-blue-50"
                   }
@@ -298,8 +298,8 @@ export function AnalyticsDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Applications</SelectItem>
-                <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-                <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+                <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -331,12 +331,12 @@ export function AnalyticsDashboard() {
                       <Badge
                         variant="outline"
                         className={
-                          txn.assetPlatform === "Opco Harbor"
+                          txn.assetPlatform === "Urbco Harbor"
                             ? "border-purple-500 text-purple-700 bg-purple-50"
                             : "border-blue-500 text-blue-700 bg-blue-50"
                         }
                       >
-                        {txn.assetPlatform || "Opco Foundry"}
+                        {txn.assetPlatform || "Urbco Foundry"}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{txn.serialId}</TableCell>

@@ -124,7 +124,7 @@ export function AssetManagement() {
     propertyCategory: "Residential",
     projectStatus: "Foundation",
     developmentStage: "Before Development", // "Before Development" | "After Development"
-    platform: "Opco Foundry", // "Opco Foundry" | "Opco Harbor"
+    platform: "Urbco Foundry", // "Urbco Foundry" | "Urbco Harbor"
     location: "",
     address: "",
     company: "",
@@ -178,7 +178,7 @@ export function AssetManagement() {
     customRiskFactor: "",
     offPlanSecurity: "",
     exitLiquidity: "High",
-    managementMode: "Opco Foundry-managed",
+    managementMode: "Urbco Foundry-managed",
 
     // Media & Commissions
     images: 0,
@@ -283,7 +283,7 @@ export function AssetManagement() {
 
     return {
       ...data,
-      platform: data.platform || "Opco Foundry",
+      platform: data.platform || "Urbco Foundry",
       developmentStage: data.developmentStage || "Before Development",
       companyId: data.company,
       company: companies.find((c) => c.id === data.company) || { id: data.company, name: "Partner Developer" },
@@ -351,7 +351,7 @@ export function AssetManagement() {
         propertyCategory: asset.propertyCategory || "Residential",
         projectStatus: asset.projectStatus || "Foundation",
         developmentStage: asset.developmentStage || "Before Development",
-        platform: asset.platform || "Opco Foundry",
+        platform: asset.platform || "Urbco Foundry",
         location: asset.location || "",
         address: asset.address || "",
         company: asset.companyId || asset.company?.id || "",
@@ -384,7 +384,7 @@ export function AssetManagement() {
         constructionProgress: asset.constructionStage?.toString() || "",
         riskLevel: asset.riskLevel || "Low",
         riskFactors: asset.riskFactors || [],
-        managementMode: asset.managementMode || "Opco Foundry-managed",
+        managementMode: asset.managementMode || "Urbco Foundry-managed",
         leadCommission: asset.leadCommission?.toString() || "2.5",
         closerCommission: asset.closerCommission?.toString() || "1.5",
         status: asset.status || "active",
@@ -767,13 +767,13 @@ export function AssetManagement() {
                             1. Select Application Sorting *
                           </Label>
                           <p className="text-xs text-muted-foreground mb-3">
-                            Specify whether this asset belongs to Opco Foundry or Opco Harbor for user access & level routing.
+                            Specify whether this asset belongs to Urbco Foundry or Urbco Harbor for user access & level routing.
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
-                              onClick={() => updateFormData("platform", "Opco Foundry")}
+                              onClick={() => updateFormData("platform", "Urbco Foundry")}
                               className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.platform === "Opco Foundry"
+                                formData.platform === "Urbco Foundry"
                                   ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
                                   : "border-border hover:border-blue-300"
                               }`}
@@ -783,7 +783,7 @@ export function AssetManagement() {
                                   OF
                                 </div>
                                 <div>
-                                  <h4 className="font-semibold text-sm">Opco Foundry</h4>
+                                  <h4 className="font-semibold text-sm">Urbco Foundry</h4>
                                   <span className="text-xs text-blue-600 font-medium">Foundry Application</span>
                                 </div>
                               </div>
@@ -793,9 +793,9 @@ export function AssetManagement() {
                             </div>
 
                             <div
-                              onClick={() => updateFormData("platform", "Opco Harbor")}
+                              onClick={() => updateFormData("platform", "Urbco Harbor")}
                               className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.platform === "Opco Harbor"
+                                formData.platform === "Urbco Harbor"
                                   ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/20"
                                   : "border-border hover:border-purple-300"
                               }`}
@@ -805,7 +805,7 @@ export function AssetManagement() {
                                   OH
                                 </div>
                                 <div>
-                                  <h4 className="font-semibold text-sm">Opco Harbor</h4>
+                                  <h4 className="font-semibold text-sm">Urbco Harbor</h4>
                                   <span className="text-xs text-purple-600 font-medium">Harbor Application</span>
                                 </div>
                               </div>
@@ -850,7 +850,7 @@ export function AssetManagement() {
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <Label>Opco Markup (₦)</Label>
+                                  <Label>Urbco Markup (₦)</Label>
                                   <Input
                                     type="number"
                                     value={formData.markup}
@@ -882,7 +882,7 @@ export function AssetManagement() {
                                   />
                                 </div>
                                 <div>
-                                  <Label>Opco Markup (₦)</Label>
+                                  <Label>Urbco Markup (₦)</Label>
                                   <Input
                                     type="number"
                                     value={formData.markup}
@@ -1318,8 +1318,8 @@ export function AssetManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Applications</SelectItem>
-                    <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-                    <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                    <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+                    <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1453,7 +1453,7 @@ export function AssetManagement() {
               </TableHeader>
               <TableBody>
                 {filteredAssets.map((asset) => {
-                  const isFoundry = (asset.platform || "Opco Foundry") === "Opco Foundry";
+                  const isFoundry = (asset.platform || "Urbco Foundry") === "Urbco Foundry";
                   const isBeforeDev = (asset.developmentStage || "Before Development") === "Before Development";
 
                   return (
@@ -1467,7 +1467,7 @@ export function AssetManagement() {
                               : "border-purple-500 text-purple-700 bg-purple-50"
                           }
                         >
-                          {asset.platform || "Opco Foundry"}
+                          {asset.platform || "Urbco Foundry"}
                         </Badge>
                       </TableCell>
 
@@ -1664,8 +1664,8 @@ export function AssetManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-                    <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                    <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+                    <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

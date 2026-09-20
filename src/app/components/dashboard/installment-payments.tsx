@@ -134,7 +134,7 @@ export function InstallmentPayments() {
           planId: selectedPlan.id,
           buyerEmail: checkoutEmail,
         },
-        title: "Opco Foundry Installment Payment",
+        title: "Urbco Foundry Installment Payment",
       });
 
       if (response?.authorizationUrl) {
@@ -565,8 +565,8 @@ export function InstallmentPayments() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Applications</SelectItem>
-            <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-            <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+            <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+            <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -624,12 +624,12 @@ export function InstallmentPayments() {
                           <Badge
                             variant="outline"
                             className={
-                              plan.assetPlatform === "Opco Harbor"
+                              plan.assetPlatform === "Urbco Harbor"
                                 ? "border-purple-500 text-purple-700 bg-purple-50"
                                 : "border-blue-500 text-blue-700 bg-blue-50"
                             }
                           >
-                            {plan.assetPlatform || "Opco Foundry"}
+                            {plan.assetPlatform || "Urbco Foundry"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">

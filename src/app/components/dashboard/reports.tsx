@@ -311,8 +311,8 @@ export function Reports() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Applications</SelectItem>
-            <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-            <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+            <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+            <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
           </SelectContent>
         </Select>
       </div>

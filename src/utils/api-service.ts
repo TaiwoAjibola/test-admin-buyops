@@ -219,10 +219,10 @@ export const assetsApi = {
 
   create: async (data: any) => {
     await delay(500);
-    const platform = data.platform || 'Opco Foundry';
+    const platform = data.platform || 'Urbco Foundry';
     const developmentStage = data.developmentStage || 'Before Development';
     const newAsset = {
-      id: (platform === 'Opco Harbor' ? 'hrb-' : 'asset-') + Date.now(),
+      id: (platform === 'Urbco Harbor' ? 'hrb-' : 'asset-') + Date.now(),
       platform,
       developmentStage,
       ...data,
@@ -241,11 +241,11 @@ export const assetsApi = {
     return clone(assets[index]);
   },
 
-  transferToOpcoFoundry: async (id: string) => {
+  transferToUrbcoFoundry: async (id: string) => {
     await delay(500);
     const index = assets.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Asset not found');
-    assets[index].platform = 'Opco Foundry';
+    assets[index].platform = 'Urbco Foundry';
     assets[index].status = 'active';
     return clone(assets[index]);
   },
@@ -254,7 +254,7 @@ export const assetsApi = {
     await delay(500);
     const index = assets.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Asset not found');
-    assets[index].platform = 'Opco Foundry';
+    assets[index].platform = 'Urbco Foundry';
     assets[index].status = 'active';
     return clone(assets[index]);
   },

@@ -376,8 +376,8 @@ export function Users() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Applications</SelectItem>
-                  <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
-                  <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                  <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
+                  <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
                 </SelectContent>
               </Select>
               <div className="text-sm text-muted-foreground">
@@ -687,12 +687,12 @@ export function Users() {
                                 <Badge
                                   variant="outline"
                                   className={
-                                    investor.investorPlatform === "Opco Harbor"
+                                    investor.investorPlatform === "Urbco Harbor"
                                       ? "border-purple-500 text-purple-700 bg-purple-50"
                                       : "border-blue-500 text-blue-700 bg-blue-50"
                                   }
                                 >
-                                  {investor.investorPlatform || "Opco Foundry"}
+                                  {investor.investorPlatform || "Urbco Foundry"}
                                 </Badge>
                               </TableCell>
                               <TableCell>
