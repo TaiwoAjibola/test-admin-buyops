@@ -138,8 +138,8 @@ export function NotificationsPopover() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="BuyOps">BuyOps</SelectItem>
-                <SelectItem value="URBCO">URBCO</SelectItem>
+                <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
               </SelectContent>
             </Select>
             {unreadCount > 0 && (
@@ -199,7 +199,7 @@ export function NotificationsPopover() {
                           <Badge
                             variant="outline"
                             className={`text-xs ${
-                              notification.platform === "URBCO"
+                              notification.platform === "Opco Harbor"
                                 ? "border-purple-500 text-purple-700"
                                 : "border-blue-500 text-blue-700"
                             }`}

@@ -195,6 +195,9 @@ export const assetsApi = {
     if (filters?.platform && filters.platform !== 'all') {
       result = result.filter(a => a.platform === filters.platform);
     }
+    if (filters?.developmentStage && filters.developmentStage !== 'all') {
+      result = result.filter(a => a.developmentStage === filters.developmentStage);
+    }
     if (filters?.type && filters.type !== 'all') {
       result = result.filter(a => a.type.toLowerCase() === filters.type.toLowerCase());
     }
@@ -216,10 +219,12 @@ export const assetsApi = {
 
   create: async (data: any) => {
     await delay(500);
-    const platform = data.platform || 'BuyOps';
+    const platform = data.platform || 'Opco Foundry';
+    const developmentStage = data.developmentStage || 'Before Development';
     const newAsset = {
-      id: (platform === 'URBCO' ? 'urb-' : 'asset-') + Date.now(),
+      id: (platform === 'Opco Harbor' ? 'hrb-' : 'asset-') + Date.now(),
       platform,
+      developmentStage,
       ...data,
       status: data.status || 'draft',
       createdAt: new Date().toISOString(),
@@ -232,11 +237,16 @@ export const assetsApi = {
     await delay(500);
     const index = assets.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Asset not found');
-    // Prevent changing platform from BuyOps to URBCO
-    if (assets[index].platform === 'BuyOps' && data.platform === 'URBCO') {
-      throw new Error('BuyOps assets cannot be transferred to URBCO');
-    }
     assets[index] = { ...assets[index], ...data };
+    return clone(assets[index]);
+  },
+
+  transferToOpcoFoundry: async (id: string) => {
+    await delay(500);
+    const index = assets.findIndex(a => a.id === id);
+    if (index === -1) throw new Error('Asset not found');
+    assets[index].platform = 'Opco Foundry';
+    assets[index].status = 'active';
     return clone(assets[index]);
   },
 
@@ -244,11 +254,7 @@ export const assetsApi = {
     await delay(500);
     const index = assets.findIndex(a => a.id === id);
     if (index === -1) throw new Error('Asset not found');
-    if (assets[index].platform !== 'URBCO') {
-      throw new Error('Only URBCO assets can be transferred to BuyOps');
-    }
-    assets[index].platform = 'BuyOps';
-    assets[index].id = 'asset-' + Date.now();
+    assets[index].platform = 'Opco Foundry';
     assets[index].status = 'active';
     return clone(assets[index]);
   },

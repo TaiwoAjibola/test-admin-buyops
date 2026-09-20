@@ -392,7 +392,7 @@ export function TransactionsCommissions() {
                       htmlFor="platform-filter"
                       className="text-sm whitespace-nowrap"
                     >
-                      Platform:
+                      Application:
                     </Label>
                     <Select
                       value={platformFilter}
@@ -405,9 +405,9 @@ export function TransactionsCommissions() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Platforms</SelectItem>
-                        <SelectItem value="BuyOps">BuyOps</SelectItem>
-                        <SelectItem value="URBCO">URBCO</SelectItem>
+                        <SelectItem value="all">All Applications</SelectItem>
+                        <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                        <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -449,7 +449,7 @@ export function TransactionsCommissions() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Platform</TableHead>
+                      <TableHead>Application</TableHead>
                       <TableHead>Transaction ID</TableHead>
                       <TableHead>Asset</TableHead>
                       <TableHead>Buyer</TableHead>
@@ -471,12 +471,12 @@ export function TransactionsCommissions() {
                           <Badge
                             variant="outline"
                             className={
-                              transaction.assetPlatform === "URBCO"
-                                ? "border-purple-500 text-purple-700"
-                                : "border-blue-500 text-blue-700"
+                              transaction.assetPlatform === "Opco Harbor"
+                                ? "border-purple-500 text-purple-700 bg-purple-50"
+                                : "border-blue-500 text-blue-700 bg-blue-50"
                             }
                           >
-                            {transaction.assetPlatform || "BuyOps"}
+                            {transaction.assetPlatform || "Opco Foundry"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">

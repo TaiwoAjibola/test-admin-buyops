@@ -119,7 +119,7 @@ export function LeadManagement() {
   const applyPlatformFilter = (leadsList: any[]) => {
     if (platformFilter === "all") return leadsList;
     return leadsList.filter((lead) => {
-      const assetPlatform = lead.asset?.platform || "BuyOps";
+      const assetPlatform = lead.asset?.platform || "Opco Foundry";
       return assetPlatform === platformFilter;
     });
   };
@@ -660,9 +660,9 @@ export function LeadManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Platforms</SelectItem>
-                    <SelectItem value="BuyOps">BuyOps</SelectItem>
-                    <SelectItem value="URBCO">URBCO</SelectItem>
+                    <SelectItem value="all">All Applications</SelectItem>
+                    <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                    <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select
@@ -706,7 +706,7 @@ export function LeadManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Platform</TableHead>
+                    <TableHead>Application</TableHead>
                     <TableHead>Lead ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Contact</TableHead>
@@ -735,12 +735,12 @@ export function LeadManagement() {
                           <Badge
                             variant="outline"
                             className={
-                              lead.asset?.platform === "URBCO"
-                                ? "border-purple-500 text-purple-700"
-                                : "border-blue-500 text-blue-700"
+                              lead.asset?.platform === "Opco Harbor"
+                                ? "border-purple-500 text-purple-700 bg-purple-50"
+                                : "border-blue-500 text-blue-700 bg-blue-50"
                             }
                           >
-                            {lead.asset?.platform || "BuyOps"}
+                            {lead.asset?.platform || "Opco Foundry"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">

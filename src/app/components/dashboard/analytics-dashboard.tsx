@@ -117,18 +117,18 @@ export function AnalyticsDashboard() {
 
   const platformKpis = kpiData ? [
     {
-      platform: "BuyOps",
-      revenue: kpiData.buyOpsRevenue || 0,
-      transactions: kpiData.buyOpsTransactions || 0,
-      assets: kpiData.buyOpsAssets || 0,
-      investors: kpiData.buyOpsInvestors || 0,
+      platform: "Opco Foundry",
+      revenue: kpiData.foundryRevenue || kpiData.buyOpsRevenue || 0,
+      transactions: kpiData.foundryTransactions || kpiData.buyOpsTransactions || 0,
+      assets: kpiData.foundryAssets || kpiData.buyOpsAssets || 0,
+      investors: kpiData.foundryInvestors || kpiData.buyOpsInvestors || 0,
     },
     {
-      platform: "URBCO",
-      revenue: kpiData.urbcoRevenue || 0,
-      transactions: kpiData.urbcoTransactions || 0,
-      assets: kpiData.urbcoAssets || 0,
-      investors: kpiData.urbcoInvestors || 0,
+      platform: "Opco Harbor",
+      revenue: kpiData.harborRevenue || kpiData.urbcoRevenue || 0,
+      transactions: kpiData.harborTransactions || kpiData.urbcoTransactions || 0,
+      assets: kpiData.harborAssets || kpiData.urbcoAssets || 0,
+      investors: kpiData.harborInvestors || kpiData.urbcoInvestors || 0,
     },
   ] : [];
 
@@ -204,14 +204,14 @@ export function AnalyticsDashboard() {
                 <Badge
                   variant="outline"
                   className={
-                    pk.platform === "URBCO"
-                      ? "border-purple-500 text-purple-700"
-                      : "border-blue-500 text-blue-700"
+                    pk.platform === "Opco Harbor"
+                      ? "border-purple-500 text-purple-700 bg-purple-50"
+                      : "border-blue-500 text-blue-700 bg-blue-50"
                   }
                 >
                   {pk.platform}
                 </Badge>
-                <span className="text-sm text-muted-foreground">Platform Stats</span>
+                <span className="text-sm text-muted-foreground">Application Stats</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -291,15 +291,15 @@ export function AnalyticsDashboard() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Transactions</CardTitle>
           <div className="flex items-center gap-2">
-            <Label className="text-sm">Platform:</Label>
+            <Label className="text-sm">Application:</Label>
             <Select value={platformFilter} onValueChange={setPlatformFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Platforms</SelectItem>
-                <SelectItem value="BuyOps">BuyOps</SelectItem>
-                <SelectItem value="URBCO">URBCO</SelectItem>
+                <SelectItem value="all">All Applications</SelectItem>
+                <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -308,7 +308,7 @@ export function AnalyticsDashboard() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Platform</TableHead>
+                <TableHead>Application</TableHead>
                 <TableHead>Transaction ID</TableHead>
                 <TableHead>Asset</TableHead>
                 <TableHead>Buyer</TableHead>
@@ -331,12 +331,12 @@ export function AnalyticsDashboard() {
                       <Badge
                         variant="outline"
                         className={
-                          txn.assetPlatform === "URBCO"
-                            ? "border-purple-500 text-purple-700"
-                            : "border-blue-500 text-blue-700"
+                          txn.assetPlatform === "Opco Harbor"
+                            ? "border-purple-500 text-purple-700 bg-purple-50"
+                            : "border-blue-500 text-blue-700 bg-blue-50"
                         }
                       >
-                        {txn.assetPlatform || "BuyOps"}
+                        {txn.assetPlatform || "Opco Foundry"}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{txn.serialId}</TableCell>

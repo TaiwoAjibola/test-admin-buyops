@@ -134,7 +134,7 @@ export function InstallmentPayments() {
           planId: selectedPlan.id,
           buyerEmail: checkoutEmail,
         },
-        title: "BuyOps Installment Payment",
+        title: "Opco Foundry Installment Payment",
       });
 
       if (response?.authorizationUrl) {
@@ -558,15 +558,15 @@ export function InstallmentPayments() {
 
       {/* Payment Plans Table */}
       <div className="flex items-center gap-4 mb-4">
-        <Label className="text-sm">Platform:</Label>
+        <Label className="text-sm">Application:</Label>
         <Select value={platformFilter} onValueChange={setPlatformFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Platforms</SelectItem>
-            <SelectItem value="BuyOps">BuyOps</SelectItem>
-            <SelectItem value="URBCO">URBCO</SelectItem>
+            <SelectItem value="all">All Applications</SelectItem>
+            <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+            <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -597,7 +597,7 @@ export function InstallmentPayments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Platform</TableHead>
+                    <TableHead>Application</TableHead>
                     <TableHead>Plan ID</TableHead>
                     <TableHead>Asset</TableHead>
                     <TableHead>Buyer</TableHead>
@@ -624,12 +624,12 @@ export function InstallmentPayments() {
                           <Badge
                             variant="outline"
                             className={
-                              plan.assetPlatform === "URBCO"
-                                ? "border-purple-500 text-purple-700"
-                                : "border-blue-500 text-blue-700"
+                              plan.assetPlatform === "Opco Harbor"
+                                ? "border-purple-500 text-purple-700 bg-purple-50"
+                                : "border-blue-500 text-blue-700 bg-blue-50"
                             }
                           >
-                            {plan.assetPlatform || "BuyOps"}
+                            {plan.assetPlatform || "Opco Foundry"}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-mono text-sm">

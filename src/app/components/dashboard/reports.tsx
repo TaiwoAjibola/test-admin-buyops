@@ -304,15 +304,15 @@ export function Reports() {
 
       {/* Platform Filter */}
       <div className="flex items-center gap-4">
-        <Label className="text-sm">Platform:</Label>
+        <Label className="text-sm">Application:</Label>
         <Select value={platformFilter} onValueChange={setPlatformFilter}>
           <SelectTrigger className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Platforms</SelectItem>
-            <SelectItem value="BuyOps">BuyOps</SelectItem>
-            <SelectItem value="URBCO">URBCO</SelectItem>
+            <SelectItem value="all">All Applications</SelectItem>
+            <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+            <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
           </SelectContent>
         </Select>
       </div>

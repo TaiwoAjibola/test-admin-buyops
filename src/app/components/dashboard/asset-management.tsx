@@ -1,6 +1,46 @@
-import { useState, useEffect, useRef } from "react";
-import { formatDate } from "../../../utils/format";
+import {
+  Building2,
+  Calendar,
+  CheckCircle2,
+  CircleAlert,
+  Download,
+  Eye,
+  FileText,
+  Filter,
+  Image as ImageIcon,
+  Layers,
+  MapPin,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  TrendingUp,
+  Upload,
+  User,
+  Users,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ShieldAlert,
+  Zap,
+} from "lucide-react";
+import { NairaSign } from "@/app/components/NairaSign";
+import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
 import {
   Table,
   TableBody,
@@ -10,41 +50,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import {
-  assetsApi,
-  companiesApi,
-  resolveMediaUrl,
-} from "../../../utils/api-service";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  DialogFooter,
-} from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import {
-  Plus,
-  Star,
-  Upload,
-  FileText,
-  Video,
-  ChevronLeft,
-  ChevronRight,
-  CircleAlert,
-  CircleCheck,
-  Filter,
-  X,
-  Pencil,
-  Trash2,
-  Eye,
-} from "lucide-react";
-import { Switch } from "../ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   Select,
   SelectContent,
@@ -55,13 +61,17 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { Progress } from "../ui/progress";
 import { toast } from "sonner";
+import { useEffect, useState, useRef } from "react";
+import { assetsApi, companiesApi } from "../../../utils/api-service";
 
 export function AssetManagement() {
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const [filterDevelopmentStage, setFilterDevelopmentStage] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterCompany, setFilterCompany] = useState<string>("all");
+  
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,7 +79,6 @@ export function AssetManagement() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [viewAsset, setViewAsset] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
 
   const [assets, setAssets] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
@@ -84,59 +93,74 @@ export function AssetManagement() {
     return message || err?.message || "Request failed";
   };
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const filters: any = {};
-        if (filterPlatform !== 'all') filters.platform = filterPlatform;
-        if (filterType !== 'all') filters.type = filterType;
-        if (filterStatus !== 'all') filters.status = filterStatus;
-        if (filterCompany !== 'all') filters.companyId = filterCompany;
-        const [a, c] = await Promise.all([
-          assetsApi.getAll(filters),
-          companiesApi.getAll(),
-        ]);
-        setAssets(a);
-        setCompanies(c);
-      } catch (error) {
-        // handle error
-      }
+  const fetchAssets = async () => {
+    try {
+      const filters: any = {};
+      if (filterPlatform !== "all") filters.platform = filterPlatform;
+      if (filterDevelopmentStage !== "all") filters.developmentStage = filterDevelopmentStage;
+      if (filterType !== "all") filters.type = filterType;
+      if (filterStatus !== "all") filters.status = filterStatus;
+      if (filterCompany !== "all") filters.companyId = filterCompany;
+      const [a, c] = await Promise.all([
+        assetsApi.getAll(filters),
+        companiesApi.getAll(),
+      ]);
+      setAssets(a);
+      setCompanies(c);
+    } catch (error) {
+      console.error("Fetch assets failed:", error);
     }
-    fetchData();
-  }, [filterPlatform, filterType, filterStatus, filterCompany]);
+  };
 
-  // Form state
+  useEffect(() => {
+    fetchAssets();
+  }, [filterPlatform, filterDevelopmentStage, filterType, filterStatus, filterCompany]);
+
+  // Form State
   const INITIAL_FORM_DATA = {
     name: "",
     referenceCode: "",
-    type: "",
-    projectStatus: "",
+    type: "Off Plan",
+    propertyCategory: "Residential",
+    projectStatus: "Foundation",
+    developmentStage: "Before Development", // "Before Development" | "After Development"
+    platform: "Opco Foundry", // "Opco Foundry" | "Opco Harbor"
     location: "",
     address: "",
     company: "",
+    description: "",
     landSize: "",
     builtSize: "",
     constructionStart: "",
     constructionEnd: "",
-    propertyCategory: "",
     totalUnits: "",
     availableUnits: "",
     unitConfiguration: [] as string[],
-    furnishingStatus: "",
+    furnishingStatus: "Unfurnished",
     sharedFacilities: [] as string[],
     facilityManagement: true,
-    ownershipType: "Full",
+    ownershipType: "Full", // "Full" | "Fractional"
     fractionTotal: "",
     costPerFraction: "",
     landUnitType: "",
     landUnitCount: "",
+
+    // Financial Configuration
     basePrice: "",
+    preDevCost: "",
+    estimatedDevCost: "",
     markup: "",
-    paymentOptions: [] as string[],
-    installmentPeriods: [] as string[],
+    paymentOptions: ["Outright", "Installment"] as string[],
+    installmentPeriods: ["6 months", "12 months", "24 months"] as string[],
     downPaymentAmount: "",
     offPlanDiscount: "",
     stageBasedDiscount: "",
+
+    // Investment Returns & Risk Assessment
+    targetFunding: "",
+    currentFunding: "",
+    fundingProgress: "",
+    minimumInvestment: "",
     projectedRentalIncome: "",
     rentalFrequency: "Annual",
     operatingCost: "",
@@ -154,259 +178,148 @@ export function AssetManagement() {
     customRiskFactor: "",
     offPlanSecurity: "",
     exitLiquidity: "High",
-    managementMode: "BuyOps-managed",
+    managementMode: "Opco Foundry-managed",
+
+    // Media & Commissions
     images: 0,
     documents: 0,
     virtualTours: 0,
-    leadCommission: "",
-    closerCommission: "",
-    status: "draft",
-  };
-
-  const URBCO_INITIAL_FORM_DATA = {
-    assetName: "",
-    assetSlug: "",
-    assetType: "",
-    location: "",
-    propertyDescription: "",
-    projectStatus: "",
-    constructionStart: "",
-    constructionFinish: "",
-    rooms: "",
-    baths: "",
-    squareMeter: "",
-    facilities: [] as string[],
-    amenities: [] as string[],
-    furnishingStatus: "",
-    propertyValue: "",
-    investmentAvailable: "",
-    availableToInvest: "",
-    costPerFraction: "",
-    totalFractions: "",
-    fractionsTaken: "",
-    percentageSold: "",
-    rentPerQuarter: "",
-    rentalStatus: "",
-    rentalFrequency: "",
-    rentalYield: "",
-    rentalYieldAssumption: "",
-    rentalIncomeGuarantee: false,
-    firstDividendDate: "",
-    incomeStartTimeline: "",
-    capitalAppreciationAnnual: "",
-    rentalYieldAnnual: "",
-    returnSources: [] as string[],
-    projectedROI: "",
-    investorsCount: "",
-    fundingProgress: "",
-    discountsClaimed: "",
-    fundingStatus: "",
-    thumbnailImage: null as File | null,
-    galleryImages: [] as File[],
-    videoTour: "",
-    brochurePdf: null as File | null,
-    status: "draft",
+    videoTourUrl: "",
+    leadCommission: "2.5",
+    closerCommission: "1.5",
+    status: "active",
   };
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
-  const [urbcoFormData, setUrbcoFormData] = useState(URBCO_INITIAL_FORM_DATA);
-  const [customFacilityInput, setCustomFacilityInput] = useState("");
-  const [urbcoCustomFacilityInput, setUrbcoCustomFacilityInput] = useState("");
-  const [urbcoCustomAmenityInput, setUrbcoCustomAmenityInput] = useState("");
-  const [urbcoCustomReturnSourceInput, setUrbcoCustomReturnSourceInput] = useState("");
-  const [customUnitInput, setCustomUnitInput] = useState("");
-  const [markupPct, setMarkupPct] = useState("");
-  const [customPctInput, setCustomPctInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleMarkupPctChange = (pct: string) => {
-    setMarkupPct(pct);
-    if (pct !== "CUSTOM" && pct) {
-      const base = parseFloat(formData.basePrice) || 0;
-      const amount = ((parseFloat(pct) / 100) * base).toFixed(0);
-      updateFormData("markup", amount);
-    } else if (pct === "CUSTOM") {
-      setCustomPctInput("");
-      updateFormData("markup", "");
+  const updateFormData = (key: keyof typeof INITIAL_FORM_DATA, value: any) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newImages = Array.from(files);
+      setUploadedImages((prev) => [...prev, ...newImages]);
+      setFormData((prev) => ({ ...prev, images: prev.images + newImages.length }));
+      toast.success(`${newImages.length} image(s) added`);
     }
   };
 
-  const handleCustomPctChange = (pct: string) => {
-    setCustomPctInput(pct);
-    const base = parseFloat(formData.basePrice) || 0;
-    const num = parseFloat(pct);
-    updateFormData(
-      "markup",
-      !pct || isNaN(num) ? "" : ((num / 100) * base).toFixed(0),
-    );
+  const handleDocumentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newDocuments = Array.from(files);
+      setUploadedDocuments((prev) => [...prev, ...newDocuments]);
+      setFormData((prev) => ({ ...prev, documents: prev.documents + newDocuments.length }));
+      toast.success(`${newDocuments.length} document(s) added`);
+    }
   };
 
-  const locations = Array.from(new Set(assets.map((a) => a.location)));
-  const platforms = Array.from(new Set(assets.map((a) => a.platform || "BuyOps")));
-  const companyIds = Array.from(new Set(assets.map((a) => a.companyId).filter(Boolean)));
+  const locations = Array.from(new Set(assets.map((a) => a.location).filter(Boolean)));
+  const assetTypes = Array.from(new Set(assets.map((a) => String(a.type || "").trim()).filter(Boolean)));
+  const assetStatuses = Array.from(new Set(assets.map((a) => String(a.status || "").trim()).filter(Boolean)));
 
   const filteredAssets = assets.filter((asset) => {
     const platformMatch = filterPlatform === "all" || asset.platform === filterPlatform;
-    const typeMatch = filterType === "all" || asset.type.toLowerCase() === filterType.toLowerCase();
+    const stageMatch = filterDevelopmentStage === "all" || asset.developmentStage === filterDevelopmentStage;
+    const typeMatch = filterType === "all" || (asset.type || "").toLowerCase() === filterType.toLowerCase();
     const statusMatch = filterStatus === "all" || String(asset.status || "").toLowerCase() === String(filterStatus).toLowerCase();
     const locationMatch = filterLocation === "all" || asset.location === filterLocation;
     const companyMatch = filterCompany === "all" || asset.companyId === filterCompany;
-    return platformMatch && typeMatch && statusMatch && locationMatch && companyMatch;
+    return platformMatch && stageMatch && typeMatch && statusMatch && locationMatch && companyMatch;
   });
 
-  const totalSteps = selectedPlatform === "URBCO" ? 8 : 9;
+  const clearFilters = () => {
+    setFilterPlatform("all");
+    setFilterDevelopmentStage("all");
+    setFilterType("all");
+    setFilterStatus("all");
+    setFilterLocation("all");
+    setFilterCompany("all");
+  };
 
+  const hasActiveFilters =
+    filterPlatform !== "all" ||
+    filterDevelopmentStage !== "all" ||
+    filterType !== "all" ||
+    filterStatus !== "all" ||
+    filterLocation !== "all" ||
+    filterCompany !== "all";
+
+  // Step Navigation & Validation
   const validateStep1 = () => {
-    const requiredFields = [
-      { field: "name", label: "Asset Name" },
-      { field: "referenceCode", label: "Asset Reference Code" },
-      { field: "type", label: "Asset Type" },
-      { field: "projectStatus", label: "Project Status" },
-      { field: "location", label: "Location" },
-      { field: "address", label: "Full Address" },
-      { field: "company", label: "Company" },
-    ];
-
-    const missingFields = requiredFields.filter(
-      ({ field }) => !formData[field as keyof typeof formData],
-    );
-
-    if (missingFields.length > 0) {
-      const fieldNames = missingFields.map((f) => f.label).join(", ");
-      toast.error(`Please fill in all required fields: ${fieldNames}`);
+    if (!formData.name.trim()) {
+      toast.error("Please enter the Asset Name");
       return false;
     }
-
-    // Validate end date is not before start date
-    if (formData.constructionStart && formData.constructionEnd) {
-      const start = new Date(formData.constructionStart);
-      const end = new Date(formData.constructionEnd);
-      if (end < start) {
-        toast.error("End date cannot be before start date.");
-        return false;
-      }
+    if (!formData.company) {
+      toast.error("Please select a Developer / Partner Company");
+      return false;
     }
-
+    if (!formData.location.trim()) {
+      toast.error("Please enter the Location");
+      return false;
+    }
     return true;
   };
 
   const nextStep = () => {
-    if (selectedPlatform === "URBCO") {
-      if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
-      return;
-    }
-    if (currentStep === 1 && !validateStep1()) {
-      return;
-    }
-    if (currentStep === 1 && formData.type === "Land") {
-      setCurrentStep(3);
-      return;
-    }
-    if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+    if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep < 4) setCurrentStep((prev) => prev + 1);
   };
 
   const prevStep = () => {
-    if (selectedPlatform === "URBCO") {
-      if (currentStep > 1) setCurrentStep(currentStep - 1);
-      return;
-    }
-    if (currentStep === 3 && formData.type === "Land") {
-      setCurrentStep(1);
-      return;
-    }
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAssets = async () => {
-    try {
-      const filters: any = {};
-      if (filterPlatform !== 'all') filters.platform = filterPlatform;
-      if (filterType !== 'all') filters.type = filterType;
-      if (filterStatus !== 'all') filters.status = filterStatus;
-      if (filterCompany !== 'all') filters.companyId = filterCompany;
-      const [a, c] = await Promise.all([
-        assetsApi.getAll(filters),
-        companiesApi.getAll(),
-      ]);
-      setAssets(a);
-      setCompanies(c);
-    } catch (err) {
-      // handle error
-    }
-  };
-
+  // Build Payload
   const buildAssetPayload = (data: typeof formData) => {
-    const {
-      company,
-      sharedFacilities,
-      costPerFraction,
-      basePrice,
-      furnishingStatus,
-      constructionProgress,
-      ...rest
-    } = data as any;
+    const basePriceNum = parseFloat(data.basePrice) || parseFloat(data.preDevCost) || 0;
+    const markupNum = parseFloat(data.markup) || 0;
+    const finalPriceNum = basePriceNum + markupNum;
 
     return {
-      ...rest,
-      companyId: company,
-      // Map frontend field names to backend field names
-      facilities: sharedFacilities,
-      fractionCost: costPerFraction,
-      price: basePrice,
-      furnished: furnishingStatus,
-      constructionStage: constructionProgress,
+      ...data,
+      platform: data.platform || "Opco Foundry",
+      developmentStage: data.developmentStage || "Before Development",
+      companyId: data.company,
+      company: companies.find((c) => c.id === data.company) || { id: data.company, name: "Partner Developer" },
+      facilities: data.sharedFacilities,
+      fractionCost: data.costPerFraction,
+      price: basePriceNum,
+      markup: markupNum,
+      finalPrice: finalPriceNum,
+      furnished: data.furnishingStatus,
+      constructionStage: data.constructionProgress,
+      totalAnnualReturn: data.totalReturnsMax || data.capitalAppreciation || "15.00",
       unitConfiguration: Array.isArray(data.unitConfiguration)
-        ? (data.unitConfiguration as string[]).join(", ")
+        ? data.unitConfiguration.join(", ")
         : data.unitConfiguration || "",
     };
   };
 
   const handleSubmit = async (statusOverride?: string) => {
-    if (!formData.company) {
-      const message = "Please select a company";
-      setError(message);
-      toast.error(message);
+    if (!formData.name || !formData.company) {
+      toast.error("Please complete basic asset details in Step 1.");
+      setCurrentStep(1);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const dataToSubmit = statusOverride
-        ? { ...formData, status: statusOverride, platform: selectedPlatform }
-        : { ...formData, platform: selectedPlatform };
-      const createdAsset = await assetsApi.create(
-        buildAssetPayload(dataToSubmit),
-      );
+      const dataToSubmit = statusOverride ? { ...formData, status: statusOverride } : formData;
+      const createdAsset = await assetsApi.create(buildAssetPayload(dataToSubmit));
 
-      // Upload images if any
       if (uploadedImages.length > 0) {
         const imageFormData = new FormData();
-        uploadedImages.forEach((file) => {
-          imageFormData.append("images", file);
-        });
+        uploadedImages.forEach((file) => imageFormData.append("images", file));
         try {
           await assetsApi.uploadImages(createdAsset.id, imageFormData);
-          toast.success(`${uploadedImages.length} image(s) uploaded`);
-        } catch (imgErr) {
-          console.error("Image upload failed:", imgErr);
-          toast.error("Some images failed to upload");
-        }
-      }
-
-      // Upload documents if any
-      if (uploadedDocuments.length > 0) {
-        const docFormData = new FormData();
-        uploadedDocuments.forEach((file) => {
-          docFormData.append("documents", file);
-        });
-        try {
-          await assetsApi.uploadDocuments(createdAsset.id, docFormData);
-          toast.success(`${uploadedDocuments.length} document(s) uploaded`);
-        } catch (docErr) {
-          console.error("Document upload failed:", docErr);
-          toast.error("Some documents failed to upload");
+        } catch (e) {
+          console.error("Image upload failed:", e);
         }
       }
 
@@ -414,16 +327,13 @@ export function AssetManagement() {
       setCreateDialogOpen(false);
       setCurrentStep(1);
       setFormData(INITIAL_FORM_DATA);
-      setMarkupPct("");
-      setCustomPctInput("");
-      // Reset file uploads
       setUploadedImages([]);
       setUploadedDocuments([]);
       toast.success("Asset created successfully");
     } catch (err: any) {
-      const message = extractError(err);
-      setError(message);
-      toast.error(message);
+      const msg = extractError(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -434,73 +344,52 @@ export function AssetManagement() {
     const asset = assets.find((a) => a.id === assetId);
     if (asset) {
       setFormData({
-        name: asset.name,
-        referenceCode: asset.referenceCode ?? "",
-        type: asset.type,
-        projectStatus: asset.projectStatus,
-        location: asset.location,
-        address: asset.address ?? "",
-        company: asset.company?.id ?? asset.companyId ?? "",
-        landSize: asset.landSize ?? "",
-        builtSize: asset.builtSize ?? "",
-        constructionStart: asset.constructionStart ?? "",
-        constructionEnd: asset.constructionEnd ?? "",
-        propertyCategory: asset.propertyCategory ?? "",
-        totalUnits: asset.totalUnits?.toString() ?? "",
-        availableUnits: asset.availableUnits?.toString() ?? "",
+        ...INITIAL_FORM_DATA,
+        name: asset.name || "",
+        referenceCode: asset.referenceCode || "",
+        type: asset.type || "Off Plan",
+        propertyCategory: asset.propertyCategory || "Residential",
+        projectStatus: asset.projectStatus || "Foundation",
+        developmentStage: asset.developmentStage || "Before Development",
+        platform: asset.platform || "Opco Foundry",
+        location: asset.location || "",
+        address: asset.address || "",
+        company: asset.companyId || asset.company?.id || "",
+        description: asset.description || "",
+        landSize: asset.landSize || "",
+        builtSize: asset.builtSize || "",
+        constructionStart: asset.constructionStart || "",
+        constructionEnd: asset.constructionEnd || "",
+        totalUnits: asset.totalUnits?.toString() || "",
+        availableUnits: asset.availableUnits?.toString() || "",
         unitConfiguration: asset.unitConfiguration
-          ? asset.unitConfiguration.split(", ").filter(Boolean)
+          ? String(asset.unitConfiguration).split(", ").filter(Boolean)
           : [],
-        furnishingStatus: asset.furnished ?? "",
-        sharedFacilities: asset.facilities ?? [],
-        facilityManagement: asset.facilityManagement ?? true,
-        ownershipType: (() => {
-          const ot = asset.ownershipType ?? "Full";
-          if (ot.toLowerCase() === "fractional") return "Fractional";
-          return "Full";
-        })(),
-        fractionTotal: asset.fractionTotal?.toString() ?? "",
-        costPerFraction: asset.fractionCost?.toString() ?? "",
-        landUnitType: asset.landUnitType ?? "",
-        landUnitCount: asset.landUnitCount?.toString() ?? "",
-        basePrice: asset.price?.toString() ?? "",
-        markup: asset.markup?.toString() ?? "",
-        paymentOptions: asset.paymentOptions ?? [],
-        installmentPeriods: asset.installmentPeriods ?? [],
-        downPaymentAmount: asset.downPaymentAmount?.toString() ?? "",
-        offPlanDiscount: asset.offPlanDiscount?.toString() ?? "",
-        stageBasedDiscount: asset.stageBasedDiscount?.toString() ?? "",
-        projectedRentalIncome: asset.projectedRentalIncome?.toString() ?? "",
-        rentalFrequency: asset.rentalFrequency ?? "Annual",
-        operatingCost: asset.operatingCost?.toString() ?? "",
-        capitalAppreciation: asset.capitalAppreciation?.toString() ?? "",
-        firstPayoutDate: asset.firstPayoutDate ?? "",
-        rentalYieldMin: asset.rentalYieldMin?.toString() ?? "",
-        rentalYieldMax: asset.rentalYieldMax?.toString() ?? "",
-        capitalAppreciationMin: asset.capitalAppreciationMin?.toString() ?? "",
-        capitalAppreciationMax: asset.capitalAppreciationMax?.toString() ?? "",
-        totalReturnsMin: asset.totalReturnsMin?.toString() ?? "",
-        totalReturnsMax: asset.totalReturnsMax?.toString() ?? "",
-        constructionProgress: asset.constructionStage?.toString() ?? "",
-        riskLevel: asset.riskLevel ?? "Low",
-        riskFactors: asset.riskFactors ?? [],
-        customRiskFactor: "",
-        offPlanSecurity: asset.offPlanSecurity ?? "",
-        exitLiquidity: asset.exitLiquidity ?? "High",
-        managementMode: asset.managementMode ?? "BuyOps-managed",
-        images: asset.images?.length ?? 0,
-        documents: asset.documents?.length ?? 0,
-        virtualTours:
-          typeof asset.virtualTours === "number" ? asset.virtualTours : 0,
-        leadCommission: asset.leadCommission?.toString() ?? "",
-        closerCommission: asset.closerCommission?.toString() ?? "",
-        status: asset.status,
+        furnishingStatus: asset.furnished || "Unfurnished",
+        sharedFacilities: asset.facilities || [],
+        ownershipType: asset.ownershipType || "Full",
+        fractionTotal: asset.fractionTotal?.toString() || "",
+        costPerFraction: asset.fractionCost?.toString() || "",
+        basePrice: asset.price?.toString() || "",
+        markup: asset.markup?.toString() || "",
+        downPaymentAmount: asset.downPaymentAmount?.toString() || "",
+        offPlanDiscount: asset.offPlanDiscount?.toString() || "",
+        projectedRentalIncome: asset.projectedRentalIncome?.toString() || "",
+        rentalYieldMin: asset.rentalYieldMin?.toString() || "",
+        rentalYieldMax: asset.rentalYieldMax?.toString() || "",
+        capitalAppreciationMin: asset.capitalAppreciationMin?.toString() || "",
+        capitalAppreciationMax: asset.capitalAppreciationMax?.toString() || "",
+        totalReturnsMin: asset.totalReturnsMin?.toString() || "",
+        totalReturnsMax: asset.totalReturnsMax?.toString() || "",
+        constructionProgress: asset.constructionStage?.toString() || "",
+        riskLevel: asset.riskLevel || "Low",
+        riskFactors: asset.riskFactors || [],
+        managementMode: asset.managementMode || "Opco Foundry-managed",
+        leadCommission: asset.leadCommission?.toString() || "2.5",
+        closerCommission: asset.closerCommission?.toString() || "1.5",
+        status: asset.status || "active",
       });
       setEditDialogOpen(true);
-      setMarkupPct("CUSTOM"); // Show existing markup as custom amount when editing
-      if (asset.markup && asset.price) {
-        setCustomPctInput(((asset.markup / asset.price) * 100).toFixed(2));
-      }
     }
   };
 
@@ -512,40 +401,13 @@ export function AssetManagement() {
       await assetsApi.update(selectedAssetId, buildAssetPayload(formData));
       await fetchAssets();
       setEditDialogOpen(false);
-      setCurrentStep(1);
-      setFormData(INITIAL_FORM_DATA);
-      setMarkupPct("");
-      setCustomPctInput("");
       setSelectedAssetId(null);
+      setFormData(INITIAL_FORM_DATA);
       toast.success("Asset updated successfully");
     } catch (err: any) {
-      const message = extractError(err);
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = (assetId: string) => {
-    setSelectedAssetId(assetId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!selectedAssetId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await assetsApi.delete(selectedAssetId);
-      await fetchAssets();
-      setDeleteDialogOpen(false);
-      setSelectedAssetId(null);
-      toast.success("Asset deleted successfully");
-    } catch (err: any) {
-      const message = extractError(err);
-      setError(message);
-      toast.error(message);
+      const msg = extractError(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -559,205 +421,31 @@ export function AssetManagement() {
     }
   };
 
-  const updateFormData = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleDelete = (assetId: string) => {
+    setSelectedAssetId(assetId);
+    setDeleteDialogOpen(true);
   };
 
-  const updateUrbcoFormData = (field: string, value: any) => {
-    setUrbcoFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-      if (field === "assetName" && !prev.assetSlug) {
-        updated.assetSlug = value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-      }
-      if (field === "fractionsTaken" || field === "totalFractions") {
-        const taken = parseFloat(field === "fractionsTaken" ? value : prev.fractionsTaken) || 0;
-        const total = parseFloat(field === "totalFractions" ? value : prev.totalFractions) || 0;
-        updated.percentageSold = total > 0 ? ((taken / total) * 100).toFixed(1) : "0";
-        updated.fundingProgress = total > 0 ? ((taken / total) * 100).toFixed(1) : "0";
-      }
-      if (field === "rentPerQuarter" || field === "propertyValue") {
-        const rent = parseFloat(field === "rentPerQuarter" ? value : prev.rentPerQuarter) || 0;
-        const propValue = parseFloat(field === "propertyValue" ? value : prev.propertyValue) || 0;
-        updated.rentalYield = propValue > 0 ? ((rent * 4 / propValue) * 100).toFixed(2) : "0.00";
-      }
-      if (field === "capitalAppreciationAnnual" || field === "rentalYieldAnnual") {
-        const capApp = parseFloat(field === "capitalAppreciationAnnual" ? value : prev.capitalAppreciationAnnual) || 0;
-        const rentYield = parseFloat(field === "rentalYieldAnnual" ? value : prev.rentalYieldAnnual) || 0;
-        updated.projectedROI = (capApp + rentYield).toFixed(2);
-      }
-      return updated;
-    });
-  };
-
-  const toggleUrbcoFacility = (facility: string) => {
-    setUrbcoFormData((prev) => ({
-      ...prev,
-      facilities: prev.facilities.includes(facility)
-        ? prev.facilities.filter((f) => f !== facility)
-        : [...prev.facilities, facility],
-    }));
-  };
-
-  const toggleUrbcoAmenity = (amenity: string) => {
-    setUrbcoFormData((prev) => ({
-      ...prev,
-      amenities: prev.amenities.includes(amenity)
-        ? prev.amenities.filter((a) => a !== amenity)
-        : [...prev.amenities, amenity],
-    }));
-  };
-
-  const toggleUrbcoReturnSource = (source: string) => {
-    setUrbcoFormData((prev) => ({
-      ...prev,
-      returnSources: prev.returnSources.includes(source)
-        ? prev.returnSources.filter((s) => s !== source)
-        : [...prev.returnSources, source],
-    }));
-  };
-
-  const toggleFacility = (facility: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      sharedFacilities: prev.sharedFacilities.includes(facility)
-        ? prev.sharedFacilities.filter((f) => f !== facility)
-        : [...prev.sharedFacilities, facility],
-    }));
-  };
-
-  const toggleUnitConfig = (config: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      unitConfiguration: (prev.unitConfiguration as string[]).includes(config)
-        ? (prev.unitConfiguration as string[]).filter((c) => c !== config)
-        : [...(prev.unitConfiguration as string[]), config],
-    }));
-  };
-
-  const togglePaymentOption = (option: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      paymentOptions: prev.paymentOptions.includes(option)
-        ? prev.paymentOptions.filter((o) => o !== option)
-        : [...prev.paymentOptions, option],
-    }));
-  };
-
-  const toggleInstallmentPeriod = (period: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      installmentPeriods: prev.installmentPeriods.includes(period)
-        ? prev.installmentPeriods.filter((p) => p !== period)
-        : [...prev.installmentPeriods, period],
-    }));
-  };
-
-  const toggleRiskFactor = (factor: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      riskFactors: prev.riskFactors.includes(factor)
-        ? prev.riskFactors.filter((f) => f !== factor)
-        : [...prev.riskFactors, factor],
-    }));
-  };
-
-  const addCustomRiskFactor = () => {
-    if (formData.customRiskFactor.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        riskFactors: [...prev.riskFactors, formData.customRiskFactor.trim()],
-        customRiskFactor: "",
-      }));
+  const confirmDelete = async () => {
+    if (!selectedAssetId) return;
+    setLoading(true);
+    try {
+      await assetsApi.delete(selectedAssetId);
+      await fetchAssets();
+      setDeleteDialogOpen(false);
+      setSelectedAssetId(null);
+      toast.success("Asset deleted successfully");
+    } catch (err: any) {
+      toast.error(extractError(err));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const removeRiskFactor = (factor: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      riskFactors: prev.riskFactors.filter((f) => f !== factor),
-    }));
-  };
-
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newImages = Array.from(files);
-      setUploadedImages((prev) => [...prev, ...newImages]);
-      setFormData((prev) => ({
-        ...prev,
-        images: prev.images + newImages.length,
-      }));
-      toast.success(`${newImages.length} image(s) added`);
-    }
-  };
-
-  const handleDocumentUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      const newDocuments = Array.from(files);
-      setUploadedDocuments((prev) => [...prev, ...newDocuments]);
-      setFormData((prev) => ({
-        ...prev,
-        documents: prev.documents + newDocuments.length,
-      }));
-      toast.success(`${newDocuments.length} document(s) added`);
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
-    setFormData((prev) => ({ ...prev, images: prev.images - 1 }));
-  };
-
-  const removeDocument = (index: number) => {
-    setUploadedDocuments((prev) => prev.filter((_, i) => i !== index));
-    setFormData((prev) => ({ ...prev, documents: prev.documents - 1 }));
-  };
-
-  // Calculated values
-  const finalPrice =
-    (parseFloat(formData.basePrice) || 0) + (parseFloat(formData.markup) || 0);
-  const rentalYield =
-    formData.projectedRentalIncome && finalPrice > 0
-      ? (
-          (parseFloat(formData.projectedRentalIncome) / finalPrice) *
-          100
-        ).toFixed(2)
-      : "0.00";
-  const totalAnnualReturn =
-    rentalYield && formData.capitalAppreciation
-      ? (
-          parseFloat(rentalYield) + parseFloat(formData.capitalAppreciation)
-        ).toFixed(2)
-      : "0.00";
-  const totalCommission =
-    (parseFloat(formData.leadCommission) || 0) +
-    (parseFloat(formData.closerCommission) || 0);
-  const fundingProgress =
-    formData.ownershipType === "Fractional" && formData.fractionTotal
-      ? Math.floor(Math.random() * 100)
-      : 100;
-
-  const clearFilters = () => {
-    setFilterPlatform("all");
-    setFilterType("all");
-    setFilterStatus("all");
-    setFilterLocation("all");
-    setFilterCompany("all");
-  };
-
-  const hasActiveFilters =
-    filterPlatform !== "all" ||
-    filterType !== "all" ||
-    filterStatus !== "all" ||
-    filterLocation !== "all" ||
-    filterCompany !== "all";
-  const assetTypes = Array.from(
-    new Set(assets.map((a) => String(a.type || "").trim()).filter(Boolean)),
-  );
-  const assetStatuses = Array.from(
-    new Set(assets.map((a) => String(a.status || "").trim()).filter(Boolean)),
-  );
+  // Calculations for review step
+  const computedBase = parseFloat(formData.basePrice) || parseFloat(formData.preDevCost) || 0;
+  const computedMarkup = parseFloat(formData.markup) || 0;
+  const computedFinal = computedBase + computedMarkup;
 
   return (
     <div className="space-y-6">
@@ -768,7 +456,7 @@ export function AssetManagement() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filters</span>
+                <span className="text-sm font-medium">Filters & Sorting</span>
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
@@ -781,4728 +469,798 @@ export function AssetManagement() {
                   </Button>
                 )}
               </div>
-               <Dialog
+
+              {/* Create Asset Trigger */}
+              <Dialog
                 open={createDialogOpen}
                 onOpenChange={(open) => {
                   setCreateDialogOpen(open);
                   if (!open) {
                     setFormData(INITIAL_FORM_DATA);
-                    setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
                     setCurrentStep(1);
-                    setSelectedPlatform("");
                     setUploadedImages([]);
                     setUploadedDocuments([]);
-                    setMarkupPct("");
-                    setCustomPctInput("");
-                    setCustomFacilityInput("");
-                    setUrbcoCustomFacilityInput("");
-                    setUrbcoCustomAmenityInput("");
-                    setUrbcoCustomReturnSourceInput("");
                     setError(null);
                   }
                 }}
               >
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Asset
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {!selectedPlatform
-                        ? "Select Asset Platform"
-                        : `Create New Asset — ${selectedPlatform}`}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {!selectedPlatform
-                        ? "Choose which platform this asset belongs to. This determines the entire setup workflow."
-                        : selectedPlatform === "URBCO"
-                          ? `Step ${currentStep} of ${totalSteps}: ${
-                              currentStep === 1
-                                ? "Basic Asset Information"
-                                : currentStep === 2
-                                  ? "Property Specifications"
-                                  : currentStep === 3
-                                    ? "Financial Information"
-                                    : currentStep === 4
-                                      ? "Rental Information"
-                                      : currentStep === 5
-                                        ? "Investment Return Information"
-                                        : currentStep === 6
-                                          ? "Funding Information"
-                                          : currentStep === 7
-                                            ? "Media & Documentation"
-                                            : "Review & Publish"
-                            }`
-                          : `Step ${currentStep} of ${totalSteps}: ${
-                              currentStep === 1
-                                ? "Asset Identity & Status"
-                                : currentStep === 2
-                                  ? "Physical & Functional Details"
-                                  : currentStep === 3
-                                    ? "Investment Structure"
-                                    : currentStep === 4
-                                      ? "Pricing & Payment Logic"
-                                      : currentStep === 5
-                                        ? "Returns & Projections"
-                                        : currentStep === 6
-                                          ? "Risk & Transparency"
-                                          : currentStep === 7
-                                            ? "Media & Documentation"
-                                            : currentStep === 8
-                                              ? "Commission Setup"
-                                              : "Review & Publish"
-                            }`}
-                    </DialogDescription>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+                  <DialogHeader className="p-6 pb-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <DialogTitle className="text-xl font-bold">
+                          Create New Asset
+                        </DialogTitle>
+                        <DialogDescription className="mt-1 text-sm">
+                          Step {currentStep} of 4:{" "}
+                          {currentStep === 1
+                            ? "Level 1 Basic Information & Stage"
+                            : currentStep === 2
+                              ? "Financial Configuration & Application"
+                              : currentStep === 3
+                                ? "Investment Returns & Risk Assessment"
+                                : "Media, Documentation & Review"}
+                        </DialogDescription>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          formData.developmentStage === "Before Development"
+                            ? "border-amber-500 text-amber-600 bg-amber-50"
+                            : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                        }
+                      >
+                        {formData.developmentStage}
+                      </Badge>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-secondary h-2 rounded-full mt-4 overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-300"
+                        style={{ width: `${(currentStep / 4) * 100}%` }}
+                      />
+                    </div>
                   </DialogHeader>
 
-                  {!selectedPlatform ? (
-                    <div className="px-6 py-8">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div
-                          onClick={() => setSelectedPlatform("BuyOps")}
-                          className="p-6 border-2 rounded-xl cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50/50"
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
-                            <span className="text-2xl font-bold text-blue-600">B</span>
-                          </div>
-                          <h3 className="text-lg font-semibold mb-2">BuyOps</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Completed or ready-to-sell properties. Focus on finalized property sales and completed asset investments.
-                          </p>
-                          <ul className="text-xs text-muted-foreground space-y-1">
-                            <li>• Completed properties</li>
-                            <li>• Under construction with defined products</li>
-                            <li>• Off-plan with finalized specifications</li>
-                            <li>• Land parcels ready for sale</li>
-                          </ul>
-                        </div>
-                        <div
-                          onClick={() => setSelectedPlatform("URBCO")}
-                          className="p-6 border-2 rounded-xl cursor-pointer transition-all hover:border-purple-500 hover:bg-purple-50/50"
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
-                            <span className="text-2xl font-bold text-purple-600">U</span>
-                          </div>
-                          <h3 className="text-lg font-semibold mb-2">URBCO</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Pre-development and inception-stage projects. Early investors fund projects before completion.
-                          </p>
-                          <ul className="text-xs text-muted-foreground space-y-1">
-                            <li>• Planning & feasibility stage</li>
-                            <li>• Land acquisition phase</li>
-                            <li>• Early construction funding</li>
-                            <li>• Can transfer to BuyOps after completion</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {error && (
-                      <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border border-red-300">
+                      <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 text-sm">
                         {error}
                       </div>
                     )}
-                    {selectedPlatform === "URBCO" ? (
-                      <>
-                    {/* URBCO Step 1: Basic Asset Information */}
+
+                    {/* STEP 1: LEVEL 1 BASIC INFORMATION & DEVELOPMENT STAGE */}
                     {currentStep === 1 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-assetName">Asset Name *</Label>
-                            <Input
-                              id="urbco-assetName"
-                              value={urbcoFormData.assetName}
-                              onChange={(e) => updateUrbcoFormData("assetName", e.target.value)}
-                              placeholder="e.g., Marina Heights Tower"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-assetSlug">Asset Slug</Label>
-                            <Input
-                              id="urbco-assetSlug"
-                              value={urbcoFormData.assetSlug}
-                              onChange={(e) => updateUrbcoFormData("assetSlug", e.target.value)}
-                              placeholder="Auto-generated from name"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-assetType">Asset Type *</Label>
-                            <Select
-                              value={urbcoFormData.assetType}
-                              onValueChange={(val) => updateUrbcoFormData("assetType", val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Hostel Development">Hostel Development</SelectItem>
-                                <SelectItem value="Residential">Residential</SelectItem>
-                                <SelectItem value="Commercial">Commercial</SelectItem>
-                                <SelectItem value="Mixed-use">Mixed-use</SelectItem>
-                                <SelectItem value="Land">Land</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-projectStatus">Project Status *</Label>
-                            <Select
-                              value={urbcoFormData.projectStatus}
-                              onValueChange={(val) => updateUrbcoFormData("projectStatus", val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Design">Design</SelectItem>
-                                <SelectItem value="Foundation">Foundation</SelectItem>
-                                <SelectItem value="Under Construction">Under Construction</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
+                      <div className="space-y-6">
+                        {/* Development Stage Card Selection */}
                         <div>
-                          <Label htmlFor="urbco-location">Location *</Label>
-                          <Input
-                            id="urbco-location"
-                            value={urbcoFormData.location}
-                            onChange={(e) => updateUrbcoFormData("location", e.target.value)}
-                            placeholder="e.g., Lagos, Nigeria"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="urbco-propertyDescription">Property Description</Label>
-                          <Textarea
-                            id="urbco-propertyDescription"
-                            value={urbcoFormData.propertyDescription}
-                            onChange={(e) => updateUrbcoFormData("propertyDescription", e.target.value)}
-                            placeholder="Describe the property..."
-                            rows={3}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-constructionStart">Construction Start Date</Label>
-                            <Input
-                              id="urbco-constructionStart"
-                              type="date"
-                              value={urbcoFormData.constructionStart}
-                              onChange={(e) => updateUrbcoFormData("constructionStart", e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-constructionFinish">Construction Finish Date</Label>
-                            <Input
-                              id="urbco-constructionFinish"
-                              type="date"
-                              value={urbcoFormData.constructionFinish}
-                              onChange={(e) => updateUrbcoFormData("constructionFinish", e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 2: Property Specifications */}
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-rooms">Rooms</Label>
-                            <Input
-                              id="urbco-rooms"
-                              type="number"
-                              value={urbcoFormData.rooms}
-                              onChange={(e) => updateUrbcoFormData("rooms", e.target.value)}
-                              placeholder="120"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-baths">Baths</Label>
-                            <Input
-                              id="urbco-baths"
-                              value={urbcoFormData.baths}
-                              onChange={(e) => updateUrbcoFormData("baths", e.target.value)}
-                              placeholder="e.g., All En-suite"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-squareMeter">Square Meter</Label>
-                            <Input
-                              id="urbco-squareMeter"
-                              type="number"
-                              value={urbcoFormData.squareMeter}
-                              onChange={(e) => updateUrbcoFormData("squareMeter", e.target.value)}
-                              placeholder="5000"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">Facilities</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {["Pool", "Gym", "Parking", "Security", "Private Beach", "Spa", "Retail", "Meeting Rooms", "Elevators"].map((facility) => (
-                              <div key={facility} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`urbco-facility-${facility}`}
-                                  checked={urbcoFormData.facilities.includes(facility)}
-                                  onCheckedChange={() => toggleUrbcoFacility(facility)}
-                                />
-                                <label htmlFor={`urbco-facility-${facility}`} className="text-sm cursor-pointer">
-                                  {facility}
-                                </label>
-                              </div>
-                            ))}
-                            {urbcoFormData.facilities
-                              .filter((f) => !["Pool", "Gym", "Parking", "Security", "Private Beach", "Spa", "Retail", "Meeting Rooms", "Elevators"].includes(f))
-                              .map((customF) => (
-                                <div key={customF} className="flex items-center space-x-2">
-                                  <Checkbox id={`urbco-facility-custom-${customF}`} checked onCheckedChange={() => toggleUrbcoFacility(customF)} />
-                                  <label htmlFor={`urbco-facility-custom-${customF}`} className="text-sm cursor-pointer">{customF}</label>
-                                </div>
-                              ))}
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <Input
-                              value={urbcoCustomFacilityInput}
-                              onChange={(e) => setUrbcoCustomFacilityInput(e.target.value)}
-                              placeholder="Add custom facility"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (urbcoCustomFacilityInput.trim()) {
-                                  toggleUrbcoFacility(urbcoCustomFacilityInput.trim());
-                                  setUrbcoCustomFacilityInput("");
-                                }
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">Amenities</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {["WiFi", "Laundry", "Cleaning", "Maintenance", "Concierge", "Shuttle"].map((amenity) => (
-                              <div key={amenity} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`urbco-amenity-${amenity}`}
-                                  checked={urbcoFormData.amenities.includes(amenity)}
-                                  onCheckedChange={() => toggleUrbcoAmenity(amenity)}
-                                />
-                                <label htmlFor={`urbco-amenity-${amenity}`} className="text-sm cursor-pointer">
-                                  {amenity}
-                                </label>
-                              </div>
-                            ))}
-                            {urbcoFormData.amenities
-                              .filter((a) => !["WiFi", "Laundry", "Cleaning", "Maintenance", "Concierge", "Shuttle"].includes(a))
-                              .map((customA) => (
-                                <div key={customA} className="flex items-center space-x-2">
-                                  <Checkbox id={`urbco-amenity-custom-${customA}`} checked onCheckedChange={() => toggleUrbcoAmenity(customA)} />
-                                  <label htmlFor={`urbco-amenity-custom-${customA}`} className="text-sm cursor-pointer">{customA}</label>
-                                </div>
-                              ))}
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <Input
-                              value={urbcoCustomAmenityInput}
-                              onChange={(e) => setUrbcoCustomAmenityInput(e.target.value)}
-                              placeholder="Add custom amenity"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (urbcoCustomAmenityInput.trim()) {
-                                  toggleUrbcoAmenity(urbcoCustomAmenityInput.trim());
-                                  setUrbcoCustomAmenityInput("");
-                                }
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="urbco-furnishingStatus">Furnishing Status</Label>
-                          <Select
-                            value={urbcoFormData.furnishingStatus}
-                            onValueChange={(val) => updateUrbcoFormData("furnishingStatus", val)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Unfurnished">Unfurnished</SelectItem>
-                              <SelectItem value="Semi-furnished">Semi-furnished</SelectItem>
-                              <SelectItem value="Fully furnished">Fully furnished</SelectItem>
-                              <SelectItem value="N/A">N/A</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 3: Financial Information */}
-                    {currentStep === 3 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-propertyValue">Property Value (₦)</Label>
-                            <Input
-                              id="urbco-propertyValue"
-                              type="number"
-                              value={urbcoFormData.propertyValue}
-                              onChange={(e) => updateUrbcoFormData("propertyValue", e.target.value)}
-                              placeholder="500000000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-investmentAvailable">Investment Available (₦)</Label>
-                            <Input
-                              id="urbco-investmentAvailable"
-                              type="number"
-                              value={urbcoFormData.investmentAvailable}
-                              onChange={(e) => updateUrbcoFormData("investmentAvailable", e.target.value)}
-                              placeholder="200000000"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-availableToInvest">Available to Invest (₦)</Label>
-                            <Input
-                              id="urbco-availableToInvest"
-                              type="number"
-                              value={urbcoFormData.availableToInvest}
-                              onChange={(e) => updateUrbcoFormData("availableToInvest", e.target.value)}
-                              placeholder="150000000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-costPerFraction">Cost Per Fraction (₦)</Label>
-                            <Input
-                              id="urbco-costPerFraction"
-                              type="number"
-                              value={urbcoFormData.costPerFraction}
-                              onChange={(e) => updateUrbcoFormData("costPerFraction", e.target.value)}
-                              placeholder="500000"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-totalFractions">Total Fractions</Label>
-                            <Input
-                              id="urbco-totalFractions"
-                              type="number"
-                              value={urbcoFormData.totalFractions}
-                              onChange={(e) => updateUrbcoFormData("totalFractions", e.target.value)}
-                              placeholder="1000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-fractionsTaken">Fractions Taken</Label>
-                            <Input
-                              id="urbco-fractionsTaken"
-                              type="number"
-                              value={urbcoFormData.fractionsTaken}
-                              onChange={(e) => updateUrbcoFormData("fractionsTaken", e.target.value)}
-                              placeholder="350"
-                            />
-                          </div>
-                          <div>
-                            <Label>Percentage Sold</Label>
-                            <div className="p-2 bg-muted rounded text-sm font-semibold">
-                              {urbcoFormData.percentageSold || "0"}%
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 4: Rental Information */}
-                    {currentStep === 4 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-rentPerQuarter">Rent Per Quarter (₦)</Label>
-                            <Input
-                              id="urbco-rentPerQuarter"
-                              type="number"
-                              value={urbcoFormData.rentPerQuarter}
-                              onChange={(e) => updateUrbcoFormData("rentPerQuarter", e.target.value)}
-                              placeholder="15000000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-rentalStatus">Rental Status</Label>
-                            <Select
-                              value={urbcoFormData.rentalStatus}
-                              onValueChange={(val) => updateUrbcoFormData("rentalStatus", val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Guaranteed">Guaranteed</SelectItem>
-                                <SelectItem value="N/A">N/A</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-rentalFrequency">Rental Frequency</Label>
-                            <Select
-                              value={urbcoFormData.rentalFrequency}
-                              onValueChange={(val) => updateUrbcoFormData("rentalFrequency", val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select frequency" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Quarterly">Quarterly</SelectItem>
-                                <SelectItem value="Annual">Annual</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Rental Yield</Label>
-                            <div className="p-2 bg-muted rounded text-sm font-semibold">
-                              {urbcoFormData.rentalYield || "0.00"}%
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="urbco-rentalYieldAssumption">Rental Yield Assumption</Label>
-                          <Input
-                            id="urbco-rentalYieldAssumption"
-                            value={urbcoFormData.rentalYieldAssumption}
-                            onChange={(e) => updateUrbcoFormData("rentalYieldAssumption", e.target.value)}
-                            placeholder="e.g., Based on 80% occupancy rate"
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Rental Income Guarantee</Label>
-                            <p className="text-xs text-muted-foreground mt-1">Is rental income guaranteed?</p>
-                          </div>
-                          <Switch
-                            checked={urbcoFormData.rentalIncomeGuarantee}
-                            onCheckedChange={(val) => updateUrbcoFormData("rentalIncomeGuarantee", val)}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-firstDividendDate">First Dividend Date</Label>
-                            <Input
-                              id="urbco-firstDividendDate"
-                              type="date"
-                              value={urbcoFormData.firstDividendDate}
-                              onChange={(e) => updateUrbcoFormData("firstDividendDate", e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-incomeStartTimeline">Income Start Timeline</Label>
-                            <Input
-                              id="urbco-incomeStartTimeline"
-                              value={urbcoFormData.incomeStartTimeline}
-                              onChange={(e) => updateUrbcoFormData("incomeStartTimeline", e.target.value)}
-                              placeholder="e.g., Q1 2025"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 5: Investment Return Information */}
-                    {currentStep === 5 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-capitalAppreciationAnnual">Capital Appreciation Annual (%)</Label>
-                            <Input
-                              id="urbco-capitalAppreciationAnnual"
-                              type="number"
-                              step="0.1"
-                              value={urbcoFormData.capitalAppreciationAnnual}
-                              onChange={(e) => updateUrbcoFormData("capitalAppreciationAnnual", e.target.value)}
-                              placeholder="8.5"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-rentalYieldAnnual">Rental Yield Annual (%)</Label>
-                            <Input
-                              id="urbco-rentalYieldAnnual"
-                              type="number"
-                              step="0.1"
-                              value={urbcoFormData.rentalYieldAnnual}
-                              onChange={(e) => updateUrbcoFormData("rentalYieldAnnual", e.target.value)}
-                              placeholder="12.0"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">Return Sources</Label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {["Rental Income", "Capital Appreciation", "Dividend Distribution"].map((source) => (
-                              <div key={source} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`urbco-return-${source}`}
-                                  checked={urbcoFormData.returnSources.includes(source)}
-                                  onCheckedChange={() => toggleUrbcoReturnSource(source)}
-                                />
-                                <label htmlFor={`urbco-return-${source}`} className="text-sm cursor-pointer">
-                                  {source}
-                                </label>
-                              </div>
-                            ))}
-                            {urbcoFormData.returnSources
-                              .filter((s) => !["Rental Income", "Capital Appreciation", "Dividend Distribution"].includes(s))
-                              .map((customS) => (
-                                <div key={customS} className="flex items-center space-x-2">
-                                  <Checkbox id={`urbco-return-custom-${customS}`} checked onCheckedChange={() => toggleUrbcoReturnSource(customS)} />
-                                  <label htmlFor={`urbco-return-custom-${customS}`} className="text-sm cursor-pointer">{customS}</label>
-                                </div>
-                              ))}
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <Input
-                              value={urbcoCustomReturnSourceInput}
-                              onChange={(e) => setUrbcoCustomReturnSourceInput(e.target.value)}
-                              placeholder="Add custom return source"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (urbcoCustomReturnSourceInput.trim()) {
-                                  toggleUrbcoReturnSource(urbcoCustomReturnSourceInput.trim());
-                                  setUrbcoCustomReturnSourceInput("");
-                                }
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <h4 className="text-sm font-medium text-accent mb-2">Projected ROI</h4>
-                          <div className="text-3xl font-semibold text-accent">
-                            {urbcoFormData.projectedROI || "0.00"}%
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">Capital Appreciation + Rental Yield</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 6: Funding Information */}
-                    {currentStep === 6 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-investorsCount">Investors Count</Label>
-                            <Input
-                              id="urbco-investorsCount"
-                              type="number"
-                              value={urbcoFormData.investorsCount}
-                              onChange={(e) => updateUrbcoFormData("investorsCount", e.target.value)}
-                              placeholder="150"
-                            />
-                          </div>
-                          <div>
-                            <Label>Funding Progress</Label>
-                            <div className="p-2 bg-muted rounded text-sm font-semibold">
-                              {urbcoFormData.fundingProgress || "0"}%
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-muted rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Funding Progress</span>
-                            <span className="text-sm font-semibold">{urbcoFormData.fundingProgress || "0"}%</span>
-                          </div>
-                          <Progress value={parseFloat(urbcoFormData.fundingProgress) || 0} className="h-2" />
-                          <p className="text-xs text-muted-foreground mt-2">Auto-calculated from Fractions Taken / Total Fractions</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="urbco-discountsClaimed">Discounts Claimed (%)</Label>
-                            <Input
-                              id="urbco-discountsClaimed"
-                              type="number"
-                              step="0.1"
-                              value={urbcoFormData.discountsClaimed}
-                              onChange={(e) => updateUrbcoFormData("discountsClaimed", e.target.value)}
-                              placeholder="5.0"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="urbco-fundingStatus">Funding Status</Label>
-                            <Select
-                              value={urbcoFormData.fundingStatus}
-                              onValueChange={(val) => updateUrbcoFormData("fundingStatus", val)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Open">Open</SelectItem>
-                                <SelectItem value="Closing Soon">Closing Soon</SelectItem>
-                                <SelectItem value="Fully Funded">Fully Funded</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 7: Media & Documentation */}
-                    {currentStep === 7 && (
-                      <div className="space-y-4">
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Thumbnail Image</h4>
-                          <p className="text-sm text-muted-foreground mb-3">Main property image</p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0] || null;
-                              updateUrbcoFormData("thumbnailImage", file);
-                            }}
-                            className="hidden"
-                            id="urbco-thumbnail"
-                          />
-                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-thumbnail")?.click()}>
-                            Choose File
-                          </Button>
-                          {urbcoFormData.thumbnailImage && (
-                            <p className="text-xs text-muted-foreground mt-2">{urbcoFormData.thumbnailImage.name}</p>
-                          )}
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Gallery Images</h4>
-                          <p className="text-sm text-muted-foreground mb-3">Multiple property images</p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => {
-                              const files = Array.from(e.target.files || []);
-                              updateUrbcoFormData("galleryImages", [...urbcoFormData.galleryImages, ...files]);
-                            }}
-                            className="hidden"
-                            id="urbco-gallery"
-                          />
-                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-gallery")?.click()}>
-                            Choose Files
-                          </Button>
-                          {urbcoFormData.galleryImages.length > 0 && (
-                            <div className="mt-4 space-y-2 text-left">
-                              {urbcoFormData.galleryImages.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
-                                  <span className="truncate flex-1">{file.name}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => updateUrbcoFormData("galleryImages", urbcoFormData.galleryImages.filter((_, i) => i !== index))}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div>
-                          <Label htmlFor="urbco-videoTour">Video Tour URL</Label>
-                          <Input
-                            id="urbco-videoTour"
-                            value={urbcoFormData.videoTour}
-                            onChange={(e) => updateUrbcoFormData("videoTour", e.target.value)}
-                            placeholder="https://youtube.com/..."
-                          />
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Brochure PDF</h4>
-                          <p className="text-sm text-muted-foreground mb-3">Property brochure document</p>
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0] || null;
-                              updateUrbcoFormData("brochurePdf", file);
-                            }}
-                            className="hidden"
-                            id="urbco-brochure"
-                          />
-                          <Button variant="outline" size="sm" onClick={() => document.getElementById("urbco-brochure")?.click()}>
-                            Choose File
-                          </Button>
-                          {urbcoFormData.brochurePdf && (
-                            <p className="text-xs text-muted-foreground mt-2">{urbcoFormData.brochurePdf.name}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* URBCO Step 8: Review & Publish */}
-                    {currentStep === 8 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h3 className="font-semibold text-lg mb-4">Asset Summary</h3>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">Asset Name:</span>
-                              <span className="font-medium text-right">{urbcoFormData.assetName || "—"}</span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">Asset Slug:</span>
-                              <span className="font-medium">{urbcoFormData.assetSlug || "—"}</span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">Asset Type:</span>
-                              <Badge variant="outline">{urbcoFormData.assetType || "—"}</Badge>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">Location:</span>
-                              <span className="font-medium text-right">{urbcoFormData.location || "—"}</span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">Project Status:</span>
-                              <span className="font-medium">{urbcoFormData.projectStatus || "—"}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <h4 className="font-medium text-accent mb-3">Financial Summary</h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">Property Value:</span>
-                              <span className="font-semibold">₦{Number(urbcoFormData.propertyValue || 0).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Cost Per Fraction:</span>
-                              <span className="font-semibold">₦{Number(urbcoFormData.costPerFraction || 0).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Funding Progress:</span>
-                              <span className="font-semibold">{urbcoFormData.fundingProgress || "0"}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Projected ROI:</span>
-                              <span className="font-semibold text-accent">{urbcoFormData.projectedROI || "0.00"}%</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Publish Status</Label>
-                            <p className="text-xs text-muted-foreground mt-1">Toggle to publish asset immediately</p>
-                          </div>
-                          <Switch
-                            checked={urbcoFormData.status === "published"}
-                            onCheckedChange={(val) => updateUrbcoFormData("status", val ? "published" : "draft")}
-                          />
-                        </div>
-                      </div>
-                    )}
-                      </>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="name">Asset Name *</Label>
-                            <Input
-                              id="name"
-                              value={formData.name}
-                              onChange={(e) =>
-                                updateFormData("name", e.target.value)
-                              }
-                              placeholder="e.g., Marina Heights Tower A"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="referenceCode">
-                              Asset Reference Code *
-                            </Label>
-                            <Input
-                              id="referenceCode"
-                              value={formData.referenceCode}
-                              onChange={(e) =>
-                                updateFormData("referenceCode", e.target.value)
-                              }
-                              placeholder="e.g., MHT-A-2024"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="type">Asset Type *</Label>
-                            <Select
-                              value={formData.type}
-                              onValueChange={(val) =>
-                                updateFormData("type", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Land">Land</SelectItem>
-                                <SelectItem value="Off Plan">
-                                  Off Plan
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="projectStatus">
-                              Project Status *
-                            </Label>
-                            <Select
-                              value={formData.projectStatus}
-                              onValueChange={(val) =>
-                                updateFormData("projectStatus", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Planning">
-                                  Planning
-                                </SelectItem>
-                                <SelectItem value="Foundation">
-                                  Foundation
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                                <SelectItem value="Available">
-                                  Available
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="location">Location *</Label>
-                          <Input
-                            id="location"
-                            value={formData.location}
-                            onChange={(e) =>
-                              updateFormData("location", e.target.value)
-                            }
-                            placeholder="e.g., Dubai Marina"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="address">Full Address *</Label>
-                          <Textarea
-                            id="address"
-                            value={formData.address}
-                            onChange={(e) =>
-                              updateFormData("address", e.target.value)
-                            }
-                            placeholder="Enter complete address with plot/unit details"
-                            rows={2}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="company">Company *</Label>
-                          <Select
-                            value={formData.company}
-                            onValueChange={(val) =>
-                              updateFormData("company", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select company" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {companies.map((company) => (
-                                <SelectItem key={company.id} value={company.id}>
-                                  {company.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="landSize">Land Size (sqm)</Label>
-                            <Input
-                              id="landSize"
-                              type="number"
-                              value={formData.landSize}
-                              onChange={(e) =>
-                                updateFormData("landSize", e.target.value)
-                              }
-                              placeholder="5000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="builtSize">
-                              Built-up Size (sqm)
-                            </Label>
-                            <Input
-                              id="builtSize"
-                              type="number"
-                              value={formData.builtSize}
-                              onChange={(e) =>
-                                updateFormData("builtSize", e.target.value)
-                              }
-                              placeholder="45000"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Show construction dates only if not Land or Completed */}
-                        {formData.type !== "Land" &&
-                          formData.type !== "Completed" && (
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="constructionStart">
-                                  Construction Start Date
-                                </Label>
-                                <Input
-                                  id="constructionStart"
-                                  type="date"
-                                  value={formData.constructionStart}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "constructionStart",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="constructionEnd">
-                                  Expected Completion Date
-                                </Label>
-                                <Input
-                                  id="constructionEnd"
-                                  type="date"
-                                  value={formData.constructionEnd}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "constructionEnd",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    )}
-
-                    {/* Step 2: Physical & Functional Details */}
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="propertyCategory">
-                            Property Category *
+                          <Label className="text-base font-semibold mb-2 block">
+                            1. Select Development Stage *
                           </Label>
-                          <Select
-                            value={formData.propertyCategory}
-                            onValueChange={(val) =>
-                              updateFormData("propertyCategory", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Residential">
-                                Residential
-                              </SelectItem>
-                              <SelectItem value="Commercial">
-                                Commercial
-                              </SelectItem>
-                              <SelectItem value="Mixed-use">
-                                Mixed-use
-                              </SelectItem>
-                              <SelectItem value="Land">Land</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Determines investment structure, cost details, ROI metrics, and investor targeting.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div
+                              onClick={() => updateFormData("developmentStage", "Before Development")}
+                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                                formData.developmentStage === "Before Development"
+                                  ? "border-amber-500 bg-amber-50/40 dark:bg-amber-950/20"
+                                  : "border-border hover:border-amber-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-700 dark:text-amber-300 font-bold">
+                                  <Zap className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">Before Development</h4>
+                                  <span className="text-xs text-amber-600 font-medium">Pre-construction / Off-plan</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                For planning, land acquisition, foundation, and early construction investments. Tracks pre-funding targets and projected ROI.
+                              </p>
+                            </div>
+
+                            <div
+                              onClick={() => updateFormData("developmentStage", "After Development")}
+                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                                formData.developmentStage === "After Development"
+                                  ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
+                                  : "border-border hover:border-emerald-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold">
+                                  <CheckCircle2 className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">After Development</h4>
+                                  <span className="text-xs text-emerald-600 font-medium">Completed / Ready Asset</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                For finished properties and active revenue-generating assets. Tracks current valuation, actual rental yields, and cashflow.
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="totalUnits">
-                              Total Units / Rooms *
-                            </Label>
-                            <Input
-                              id="totalUnits"
-                              type="number"
-                              value={formData.totalUnits}
-                              onChange={(e) =>
-                                updateFormData("totalUnits", e.target.value)
-                              }
-                              placeholder="156"
-                            />
-                          </div>
-                          <div>
-                            <Label className="mb-2 block">
-                              Unit Configuration *
-                            </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {[
-                                "Studio Apartment",
-                                "1 Bedroom",
-                                "2 Bedrooms",
-                                "3 Bedrooms",
-                                "4 Bedrooms",
-                                "5 Bedrooms",
-                              ].map((config) => (
-                                <div
-                                  key={config}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={`unit-${config}`}
-                                    checked={(
-                                      formData.unitConfiguration as string[]
-                                    ).includes(config)}
-                                    onCheckedChange={() =>
-                                      toggleUnitConfig(config)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={`unit-${config}`}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {config}
-                                  </label>
-                                </div>
-                              ))}
-                              {(formData.unitConfiguration as string[])
-                                .filter(
-                                  (c) =>
-                                    ![
-                                      "Studio Apartment",
-                                      "1 Bedroom",
-                                      "2 Bedrooms",
-                                      "3 Bedrooms",
-                                      "4 Bedrooms",
-                                      "5 Bedrooms",
-                                    ].includes(c),
-                                )
-                                .map((config) => (
-                                  <div
-                                    key={config}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <Checkbox
-                                      id={`unit-${config}`}
-                                      checked
-                                      onCheckedChange={() =>
-                                        toggleUnitConfig(config)
-                                      }
-                                    />
-                                    <label
-                                      htmlFor={`unit-${config}`}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {config}
-                                    </label>
-                                  </div>
-                                ))}
-                            </div>
-                            <div className="flex gap-2 mt-2">
+                        {/* Basic Details */}
+                        <div className="space-y-4">
+                          <Label className="text-base font-semibold block border-b pb-2">
+                            2. Identity & Developer Info
+                          </Label>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="asset-name">Asset Title / Name *</Label>
                               <Input
-                                value={customUnitInput}
-                                onChange={(e) =>
-                                  setCustomUnitInput(e.target.value)
-                                }
-                                placeholder="Add custom type"
-                                className="flex-1"
+                                id="asset-name"
+                                value={formData.name}
+                                onChange={(e) => updateFormData("name", e.target.value)}
+                                placeholder="e.g. Marina Heights Tower A"
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (customUnitInput.trim()) {
-                                    toggleUnitConfig(customUnitInput.trim());
-                                    setCustomUnitInput("");
-                                  }
-                                }}
-                              >
-                                Add
-                              </Button>
                             </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="furnishingStatus">
-                            Furnishing Status *
-                          </Label>
-                          <Select
-                            value={formData.furnishingStatus}
-                            onValueChange={(val) =>
-                              updateFormData("furnishingStatus", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Unfurnished">
-                                Unfurnished
-                              </SelectItem>
-                              <SelectItem value="Semi-furnished">
-                                Semi-furnished
-                              </SelectItem>
-                              <SelectItem value="Fully furnished">
-                                Fully furnished
-                              </SelectItem>
-                              <SelectItem value="N/A">N/A</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">
-                            Shared Facilities
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            {[
-                              "Pool",
-                              "Gym",
-                              "Parking",
-                              "Security",
-                              "Private Beach",
-                              "Spa",
-                              "Retail",
-                              "Meeting Rooms",
-                              "Elevators",
-                            ].map((facility) => (
-                              <div
-                                key={facility}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={facility}
-                                  checked={formData.sharedFacilities.includes(
-                                    facility,
-                                  )}
-                                  onCheckedChange={() =>
-                                    toggleFacility(facility)
-                                  }
-                                />
-                                <label
-                                  htmlFor={facility}
-                                  className="text-sm cursor-pointer"
-                                >
-                                  {facility}
-                                </label>
-                              </div>
-                            ))}
-                            {formData.sharedFacilities
-                              .filter(
-                                (f) =>
-                                  ![
-                                    "Pool",
-                                    "Gym",
-                                    "Parking",
-                                    "Security",
-                                    "Private Beach",
-                                    "Spa",
-                                    "Retail",
-                                    "Meeting Rooms",
-                                    "Elevators",
-                                  ].includes(f),
-                              )
-                              .map((customF) => (
-                                <div
-                                  key={customF}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={customF}
-                                    checked
-                                    onCheckedChange={() =>
-                                      toggleFacility(customF)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={customF}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {customF}
-                                  </label>
-                                </div>
-                              ))}
-                          </div>
-                          <div className="flex gap-2 mt-3">
-                            <Input
-                              value={customFacilityInput}
-                              onChange={(e) =>
-                                setCustomFacilityInput(e.target.value)
-                              }
-                              placeholder="Add custom facility"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (customFacilityInput.trim()) {
-                                  toggleFacility(customFacilityInput.trim());
-                                  setCustomFacilityInput("");
-                                }
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Facility Management Included
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Is professional facility management included?
-                            </p>
-                          </div>
-                          <Switch
-                            checked={formData.facilityManagement}
-                            onCheckedChange={(val) =>
-                              updateFormData("facilityManagement", val)
-                            }
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 3: Investment Structure */}
-                    {currentStep === 3 && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Ownership Options *</Label>
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Full")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Full"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">Full Ownership</h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Single owner purchases entire asset
-                              </p>
-                            </div>
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Fractional")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Fractional"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">
-                                Fractional Ownership
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Multiple investors own fractions
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {formData.ownershipType === "Fractional" && (
-                          <>
-                            <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                              <h4 className="text-sm font-medium text-accent mb-3">
-                                Fraction Breakdown
-                              </h4>
-                              <div className="grid grid-cols-2 gap-4">
-                                {formData.type === "Land" ? (
-                                  <>
-                                    <div>
-                                      <Label htmlFor="landUnitType">
-                                        Land Units *
-                                      </Label>
-                                      <Select
-                                        id="landUnitType"
-                                        value={formData.landUnitType || ""}
-                                        onValueChange={(val) =>
-                                          updateFormData("landUnitType", val)
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select unit" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="sqm">
-                                            Per Square Meter
-                                          </SelectItem>
-                                          <SelectItem value="plot">
-                                            Per Plot
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="landUnitCount">
-                                        Number of Units *
-                                      </Label>
-                                      <Input
-                                        id="landUnitCount"
-                                        type="number"
-                                        value={formData.landUnitCount || ""}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "landUnitCount",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="e.g. 10"
-                                      />
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div>
-                                      <Label htmlFor="fractionTotal">
-                                        Total Fractions *
-                                      </Label>
-                                      <Input
-                                        id="fractionTotal"
-                                        type="number"
-                                        value={formData.fractionTotal}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "fractionTotal",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="100"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="costPerFraction">
-                                        Cost per Fraction (₦) *
-                                      </Label>
-                                      <Input
-                                        id="costPerFraction"
-                                        type="number"
-                                        value={formData.costPerFraction}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "costPerFraction",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="8500"
-                                      />
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="p-4 bg-muted rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">
-                                  Funding Progress
-                                </span>
-                                <span className="text-sm font-semibold">
-                                  {fundingProgress}%
-                                </span>
-                              </div>
-                              <Progress
-                                value={fundingProgress}
-                                className="h-2"
+                            <div>
+                              <Label htmlFor="asset-ref">Reference Code / Slug</Label>
+                              <Input
+                                id="asset-ref"
+                                value={formData.referenceCode}
+                                onChange={(e) => updateFormData("referenceCode", e.target.value)}
+                                placeholder="e.g. MHT-A-2026"
                               />
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Auto-calculated based on fraction sales
-                              </p>
                             </div>
-                          </>
-                        )}
-
-                        {formData.ownershipType === "Full" && (
-                          <div className="p-4 bg-muted rounded-lg text-center">
-                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Full ownership selected. Asset will be sold as a
-                              single unit.
-                            </p>
                           </div>
-                        )}
-                      </div>
-                    )}
 
-                    {/* Step 4: Pricing & Payment Logic */}
-                    {currentStep === 4 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="basePrice">
-                              Base Asset Value (₦) *
-                            </Label>
-                            <Input
-                              id="basePrice"
-                              type="number"
-                              value={formData.basePrice}
-                              onChange={(e) => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  basePrice: e.target.value,
-                                  markup: "",
-                                }));
-                                setMarkupPct("");
-                                setCustomPctInput("");
-                                setCustomPctInput("");
-                              }}
-                              placeholder="1200000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="markup">BuyOps Markup *</Label>
-                            <div className="space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <Label>Property Category *</Label>
                               <Select
-                                value={markupPct}
-                                onValueChange={handleMarkupPctChange}
+                                value={formData.propertyCategory}
+                                onValueChange={(val) => updateFormData("propertyCategory", val)}
                               >
-                                <SelectTrigger id="markup">
-                                  <SelectValue placeholder="Select markup %" />
+                                <SelectTrigger>
+                                  <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {[
-                                    "1",
-                                    "2",
-                                    "3",
-                                    "5",
-                                    "7",
-                                    "10",
-                                    "15",
-                                    "20",
-                                  ].map((pct) => (
-                                    <SelectItem key={pct} value={pct}>
-                                      {pct}%
-                                    </SelectItem>
-                                  ))}
-                                  <SelectItem value="CUSTOM">
-                                    Custom %
-                                  </SelectItem>
+                                  <SelectItem value="Residential">Residential</SelectItem>
+                                  <SelectItem value="Commercial">Commercial</SelectItem>
+                                  <SelectItem value="Industrial">Industrial</SelectItem>
+                                  <SelectItem value="Mixed-use">Mixed-use</SelectItem>
+                                  <SelectItem value="Land">Land</SelectItem>
                                 </SelectContent>
                               </Select>
-                              {markupPct === "CUSTOM" ? (
-                                <div className="space-y-1">
-                                  <div className="relative">
-                                    <Input
-                                      type="number"
-                                      value={customPctInput}
-                                      onChange={(e) =>
-                                        handleCustomPctChange(e.target.value)
-                                      }
-                                      placeholder="Enter custom %"
-                                      className="pr-8"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                      %
-                                    </span>
-                                  </div>
-                                  {formData.markup && (
-                                    <p className="text-sm text-muted-foreground">
-                                      = ₦
-                                      {Number(formData.markup).toLocaleString()}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                formData.markup && (
-                                  <p className="text-sm text-muted-foreground">
-                                    = ₦
-                                    {Number(formData.markup).toLocaleString()}
-                                  </p>
-                                )
-                              )}
+                            </div>
+
+                            <div>
+                              <Label>Asset Type *</Label>
+                              <Select
+                                value={formData.type}
+                                onValueChange={(val) => updateFormData("type", val)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Off Plan">Off Plan</SelectItem>
+                                  <SelectItem value="Completed">Completed</SelectItem>
+                                  <SelectItem value="Under Construction">Under Construction</SelectItem>
+                                  <SelectItem value="Land">Land</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label>Developer / Company *</Label>
+                              <Select
+                                value={formData.company}
+                                onValueChange={(val) => updateFormData("company", val)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select partner developer" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {companies.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="asset-location">Location / Neighborhood *</Label>
+                              <Input
+                                id="asset-location"
+                                value={formData.location}
+                                onChange={(e) => updateFormData("location", e.target.value)}
+                                placeholder="e.g. Victoria Island, Lagos"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="asset-address">Full Address</Label>
+                              <Input
+                                id="asset-address"
+                                value={formData.address}
+                                onChange={(e) => updateFormData("address", e.target.value)}
+                                placeholder="e.g. Plot 1234, Marina Road"
+                              />
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <div className="text-sm text-muted-foreground">
-                            Final Selling Price
+                        {/* Physical Specs */}
+                        <div className="space-y-4">
+                          <Label className="text-base font-semibold block border-b pb-2">
+                            3. Physical & Specifications
+                          </Label>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                              <Label>Land Size (sqm)</Label>
+                              <Input
+                                value={formData.landSize}
+                                onChange={(e) => updateFormData("landSize", e.target.value)}
+                                placeholder="e.g. 5000"
+                              />
+                            </div>
+                            <div>
+                              <Label>Built Size (sqm)</Label>
+                              <Input
+                                value={formData.builtSize}
+                                onChange={(e) => updateFormData("builtSize", e.target.value)}
+                                placeholder="e.g. 45000"
+                              />
+                            </div>
+                            <div>
+                              <Label>Total Units</Label>
+                              <Input
+                                type="number"
+                                value={formData.totalUnits}
+                                onChange={(e) => updateFormData("totalUnits", e.target.value)}
+                                placeholder="156"
+                              />
+                            </div>
+                            <div>
+                              <Label>Available Units</Label>
+                              <Input
+                                type="number"
+                                value={formData.availableUnits}
+                                onChange={(e) => updateFormData("availableUnits", e.target.value)}
+                                placeholder="142"
+                              />
+                            </div>
                           </div>
-                          <div className="text-3xl font-semibold text-accent mt-1">
-                            ₦{finalPrice.toLocaleString()}
+
+                          <div>
+                            <Label htmlFor="asset-desc">Property Overview / Description</Label>
+                            <Textarea
+                              id="asset-desc"
+                              rows={3}
+                              value={formData.description}
+                              onChange={(e) => updateFormData("description", e.target.value)}
+                              placeholder="Describe the property, architectural highlights, and strategic location advantages..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STEP 2: FINANCIAL CONFIGURATION & APPLICATION SORTING */}
+                    {currentStep === 2 && (
+                      <div className="space-y-6">
+                        {/* Application Sorting Selection */}
+                        <div>
+                          <Label className="text-base font-semibold mb-2 block">
+                            1. Select Application Sorting *
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Specify whether this asset belongs to Opco Foundry or Opco Harbor for user access & level routing.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div
+                              onClick={() => updateFormData("platform", "Opco Foundry")}
+                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                                formData.platform === "Opco Foundry"
+                                  ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
+                                  : "border-border hover:border-blue-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                                  OF
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">Opco Foundry</h4>
+                                  <span className="text-xs text-blue-600 font-medium">Foundry Application</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                High-velocity property sales, core commercial assets, and primary investment portfolios.
+                              </p>
+                            </div>
+
+                            <div
+                              onClick={() => updateFormData("platform", "Opco Harbor")}
+                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                                formData.platform === "Opco Harbor"
+                                  ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/20"
+                                  : "border-border hover:border-purple-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
+                                  OH
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">Opco Harbor</h4>
+                                  <span className="text-xs text-purple-600 font-medium">Harbor Application</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Specialized institutional funding, development projects, and capital partner offerings.
+                              </p>
+                            </div>
                           </div>
                         </div>
 
-                        <div>
-                          <Label className="mb-3 block">
-                            Payment Options *
-                          </Label>
-                          <div className="space-y-2">
-                            {["Full", "Installment", "Stage-based"].map(
-                              (option) => (
-                                <div
-                                  key={option}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={option}
-                                    checked={formData.paymentOptions.includes(
-                                      option,
-                                    )}
-                                    onCheckedChange={() =>
-                                      togglePaymentOption(option)
-                                    }
+                        {/* Financial Inputs Adapted to Stage */}
+                        <div className="space-y-4 border-t pt-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-base font-semibold">
+                              2. Financial Structure ({formData.developmentStage})
+                            </Label>
+                            <Badge variant="secondary">{formData.platform}</Badge>
+                          </div>
+
+                          {formData.developmentStage === "Before Development" ? (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Land / Pre-development Cost (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.basePrice}
+                                    onChange={(e) => updateFormData("basePrice", e.target.value)}
+                                    placeholder="e.g. 500000000"
                                   />
-                                  <label
-                                    htmlFor={option}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {option} Payment
-                                  </label>
                                 </div>
-                              ),
+                                <div>
+                                  <Label>Estimated Construction Cost (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.estimatedDevCost}
+                                    onChange={(e) => updateFormData("estimatedDevCost", e.target.value)}
+                                    placeholder="e.g. 2500000000"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Opco Markup (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.markup}
+                                    onChange={(e) => updateFormData("markup", e.target.value)}
+                                    placeholder="e.g. 75000000"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Off-Plan / Pre-Launch Discount (%)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.offPlanDiscount}
+                                    onChange={(e) => updateFormData("offPlanDiscount", e.target.value)}
+                                    placeholder="e.g. 10"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Base Property Valuation (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.basePrice}
+                                    onChange={(e) => updateFormData("basePrice", e.target.value)}
+                                    placeholder="e.g. 8500000000"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Opco Markup (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.markup}
+                                    onChange={(e) => updateFormData("markup", e.target.value)}
+                                    placeholder="e.g. 1275000000"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Annual Operating Cost (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.operatingCost}
+                                    onChange={(e) => updateFormData("operatingCost", e.target.value)}
+                                    placeholder="e.g. 150000000"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Required Down Payment (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.downPaymentAmount}
+                                    onChange={(e) => updateFormData("downPaymentAmount", e.target.value)}
+                                    placeholder="e.g. 1500000000"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Calculated Pricing Card */}
+                          <div className="p-4 bg-muted/50 rounded-xl border flex items-center justify-between">
+                            <div>
+                              <span className="text-xs text-muted-foreground uppercase font-semibold">
+                                Total Final Price / Investment Value
+                              </span>
+                              <div className="text-2xl font-bold flex items-center gap-1 text-primary">
+                                <NairaSign />
+                                {computedFinal.toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-right text-xs text-muted-foreground">
+                              <div>Base: ₦{computedBase.toLocaleString()}</div>
+                              <div>Markup: ₦{computedMarkup.toLocaleString()}</div>
+                            </div>
+                          </div>
+
+                          {/* Ownership Type */}
+                          <div className="space-y-2">
+                            <Label>Ownership Structure</Label>
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="ownershipType"
+                                  checked={formData.ownershipType === "Full"}
+                                  onChange={() => updateFormData("ownershipType", "Full")}
+                                />
+                                Full Title Ownership
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="ownershipType"
+                                  checked={formData.ownershipType === "Fractional"}
+                                  onChange={() => updateFormData("ownershipType", "Fractional")}
+                                />
+                                Fractional / Co-investment
+                              </label>
+                            </div>
+
+                            {formData.ownershipType === "Fractional" && (
+                              <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div>
+                                  <Label>Total Fractions</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.fractionTotal}
+                                    onChange={(e) => updateFormData("fractionTotal", e.target.value)}
+                                    placeholder="1000"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Cost Per Fraction (₦)</Label>
+                                  <Input
+                                    type="number"
+                                    value={formData.costPerFraction}
+                                    onChange={(e) => updateFormData("costPerFraction", e.target.value)}
+                                    placeholder="5000000"
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
+                      </div>
+                    )}
 
-                        {/* Installment Configuration - shown only if Installment is selected */}
-                        {formData.paymentOptions.includes("Installment") && (
-                          <div className="p-4 bg-muted rounded-lg space-y-4">
-                            <h4 className="text-sm font-medium">
-                              Installment Configuration
-                            </h4>
+                    {/* STEP 3: INVESTMENT RETURNS & RISK ASSESSMENT */}
+                    {currentStep === 3 && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <Label className="text-base font-semibold">
+                            Investment Returns & Risk ({formData.developmentStage})
+                          </Label>
+                          <Badge
+                            className={
+                              formData.developmentStage === "Before Development"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-emerald-100 text-emerald-800"
+                            }
+                          >
+                            {formData.developmentStage}
+                          </Badge>
+                        </div>
 
-                            <div>
-                              <Label htmlFor="downPaymentAmount">
-                                Down Payment Amount (₦) *
-                              </Label>
-                              <Input
-                                id="downPaymentAmount"
-                                type="number"
-                                value={formData.downPaymentAmount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "downPaymentAmount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5000000"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Minimum initial payment required
-                              </p>
+                        {formData.developmentStage === "Before Development" ? (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Target Pre-funding Goal (₦)</Label>
+                                <Input
+                                  type="number"
+                                  value={formData.targetFunding}
+                                  onChange={(e) => updateFormData("targetFunding", e.target.value)}
+                                  placeholder="e.g. 5000000000"
+                                />
+                              </div>
+                              <div>
+                                <Label>Minimum Investment Amount (₦)</Label>
+                                <Input
+                                  type="number"
+                                  value={formData.minimumInvestment}
+                                  onChange={(e) => updateFormData("minimumInvestment", e.target.value)}
+                                  placeholder="e.g. 5000000"
+                                />
+                              </div>
                             </div>
 
-                            <div>
-                              <Label className="mb-3 block">
-                                Allowed Payment Periods *
-                              </Label>
-                              <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  "3 months",
-                                  "6 months",
-                                  "12 months",
-                                  "18 months",
-                                  "24 months",
-                                  "36 months",
-                                ].map((period) => (
-                                  <div
-                                    key={period}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <Checkbox
-                                      id={period}
-                                      checked={formData.installmentPeriods.includes(
-                                        period,
-                                      )}
-                                      onCheckedChange={() =>
-                                        toggleInstallmentPeriod(period)
-                                      }
-                                    />
-                                    <label
-                                      htmlFor={period}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {period}
-                                    </label>
-                                  </div>
-                                ))}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label>Projected Rental Yield (%)</Label>
+                                <Input
+                                  value={formData.rentalYieldMax}
+                                  onChange={(e) => updateFormData("rentalYieldMax", e.target.value)}
+                                  placeholder="e.g. 9.5"
+                                />
+                              </div>
+                              <div>
+                                <Label>Projected Appreciation (%)</Label>
+                                <Input
+                                  value={formData.capitalAppreciationMax}
+                                  onChange={(e) => updateFormData("capitalAppreciationMax", e.target.value)}
+                                  placeholder="e.g. 18.0"
+                                />
+                              </div>
+                              <div>
+                                <Label>Projected Total ROI (%)</Label>
+                                <Input
+                                  value={formData.totalReturnsMax}
+                                  onChange={(e) => updateFormData("totalReturnsMax", e.target.value)}
+                                  placeholder="e.g. 27.5"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Construction Progress (%)</Label>
+                                <Input
+                                  type="number"
+                                  value={formData.constructionProgress}
+                                  onChange={(e) => updateFormData("constructionProgress", e.target.value)}
+                                  placeholder="25"
+                                />
+                              </div>
+                              <div>
+                                <Label>Expected First Dividend / Return Date</Label>
+                                <Input
+                                  type="date"
+                                  value={formData.firstPayoutDate}
+                                  onChange={(e) => updateFormData("firstPayoutDate", e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Projected Annual Rental Income (₦)</Label>
+                                <Input
+                                  type="number"
+                                  value={formData.projectedRentalIncome}
+                                  onChange={(e) => updateFormData("projectedRentalIncome", e.target.value)}
+                                  placeholder="e.g. 680000000"
+                                />
+                              </div>
+                              <div>
+                                <Label>Rental Payout Frequency</Label>
+                                <Select
+                                  value={formData.rentalFrequency}
+                                  onValueChange={(val) => updateFormData("rentalFrequency", val)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Monthly">Monthly</SelectItem>
+                                    <SelectItem value="Quarterly">Quarterly</SelectItem>
+                                    <SelectItem value="Annual">Annual</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label>Actual Rental Yield (%)</Label>
+                                <Input
+                                  value={formData.rentalYieldMax}
+                                  onChange={(e) => updateFormData("rentalYieldMax", e.target.value)}
+                                  placeholder="e.g. 8.5"
+                                />
+                              </div>
+                              <div>
+                                <Label>Annual Capital Appreciation (%)</Label>
+                                <Input
+                                  value={formData.capitalAppreciation}
+                                  onChange={(e) => updateFormData("capitalAppreciation", e.target.value)}
+                                  placeholder="e.g. 12.0"
+                                />
+                              </div>
+                              <div>
+                                <Label>Net Cashflow Returns (%)</Label>
+                                <Input
+                                  value={formData.totalReturnsMax}
+                                  onChange={(e) => updateFormData("totalReturnsMax", e.target.value)}
+                                  placeholder="e.g. 20.5"
+                                />
                               </div>
                             </div>
                           </div>
                         )}
-
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="text-sm font-medium mb-3">
-                            Discount Configuration
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="offPlanDiscount">
-                                Off-plan Discount (%)
-                              </Label>
-                              <Input
-                                id="offPlanDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.offPlanDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "offPlanDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="10"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="stageBasedDiscount">
-                                Stage-based Discount (%)
-                              </Label>
-                              <Input
-                                id="stageBasedDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.stageBasedDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "stageBasedDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-xs text-blue-900 dark:text-blue-100">
-                            <strong>Payment Security:</strong> All payments are
-                            processed through escrow accounts with full investor
-                            protection and transparent transaction tracking.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 5: Returns & Projections */}
-                    {currentStep === 5 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="projectedRentalIncome">
-                              Projected Rental Income (₦) *
-                            </Label>
-                            <Input
-                              id="projectedRentalIncome"
-                              type="number"
-                              value={formData.projectedRentalIncome}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "projectedRentalIncome",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="75000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="rentalFrequency">
-                              Rental Frequency *
-                            </Label>
-                            <Select
-                              value={formData.rentalFrequency}
-                              onValueChange={(val) =>
-                                updateFormData("rentalFrequency", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Quarterly">
-                                  Quarterly
-                                </SelectItem>
-                                <SelectItem value="Annual">Annual</SelectItem>
-                                <SelectItem value="N/A">N/A</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="operatingCost">
-                            Operating Cost Assumptions (₦/year) *
-                          </Label>
-                          <Input
-                            id="operatingCost"
-                            type="number"
-                            value={formData.operatingCost}
-                            onChange={(e) =>
-                              updateFormData("operatingCost", e.target.value)
-                            }
-                            placeholder="15000"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Include maintenance, management fees, and utilities
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="capitalAppreciation">
-                              Capital Appreciation (% p.a.) *
-                            </Label>
-                            <Input
-                              id="capitalAppreciation"
-                              type="number"
-                              step="0.1"
-                              value={formData.capitalAppreciation}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "capitalAppreciation",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="8.0"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="firstPayoutDate">
-                              First Payout Date
-                            </Label>
-                            <Input
-                              id="firstPayoutDate"
-                              type="date"
-                              value={formData.firstPayoutDate}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "firstPayoutDate",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg space-y-3">
-                          <h4 className="text-sm font-medium text-accent">
-                            Calculated Returns
-                          </h4>
-                          <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Rental Yield
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {rentalYield}%
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Capital Growth
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {formData.capitalAppreciation || 0}%
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Total Annual Return
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {totalAnnualReturn}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Investment Returns Ranges */}
-                        <div className="p-4 bg-muted rounded-lg space-y-4">
-                          <h4 className="text-sm font-medium">
-                            Projected Investment Returns (Range)
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            Define the expected range of returns for investor
-                            transparency
-                          </p>
-
-                          <div className="space-y-4">
-                            <div>
-                              <Label className="mb-2 block">
-                                Rental Yield Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rentalYieldMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "rentalYieldMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 8)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rentalYieldMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "rentalYieldMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 10)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Annual rental income as percentage of property
-                                value
-                              </p>
-                            </div>
-
-                            <div>
-                              <Label className="mb-2 block">
-                                Capital Appreciation Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.capitalAppreciationMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "capitalAppreciationMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 15)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.capitalAppreciationMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "capitalAppreciationMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 20)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Expected property value growth per annum
-                              </p>
-                            </div>
-
-                            <div>
-                              <Label className="mb-2 block">
-                                Total Returns Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.totalReturnsMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "totalReturnsMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 23)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.totalReturnsMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "totalReturnsMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 30)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Combined annual returns (rental + appreciation)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 6: Risk & Transparency */}
-                    {currentStep === 6 && (
-                      <div className="space-y-4">
-                        {/* Construction Progress - shown only for ongoing construction, not for Land type */}
-                        {formData.type !== "Land" &&
-                          formData.projectStatus &&
-                          formData.projectStatus !== "Completed" &&
-                          formData.projectStatus !== "Available" && (
-                            <div>
-                              <Label htmlFor="constructionProgress">
-                                Construction Progress (%)
-                              </Label>
-                              <Input
-                                id="constructionProgress"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={formData.constructionProgress}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "constructionProgress",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="70"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Current completion percentage of the project
-                              </p>
-                            </div>
-                          )}
-
-                        <div>
-                          <Label>Risk Level *</Label>
-                          <div className="grid grid-cols-3 gap-3 mt-2">
-                            {["Low", "Medium", "High"].map((level) => (
-                              <div
-                                key={level}
-                                onClick={() =>
-                                  updateFormData("riskLevel", level)
-                                }
-                                className={`p-3 border-2 rounded-lg cursor-pointer text-center transition-all ${
-                                  formData.riskLevel === level
-                                    ? level === "Low"
-                                      ? "border-accent bg-accent/10 text-accent"
-                                      : level === "Medium"
-                                        ? "border-warning bg-warning/10 text-warning"
-                                        : "border-destructive bg-destructive/10 text-destructive"
-                                    : "border-border hover:border-muted-foreground"
-                                }`}
-                              >
-                                <div className="font-medium">{level}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
 
                         {/* Risk Factors */}
-                        <div className="p-4 bg-muted rounded-lg space-y-4">
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">
-                              Investment Risk Factors
-                            </h4>
-                            <p className="text-xs text-muted-foreground mb-3">
-                              Select applicable risk factors for investor
-                              transparency
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            {[
-                              "Construction timeline risk (if applicable)",
-                              "Market volatility in property sector",
-                              "Rental income may vary based on occupancy",
-                              "Regulatory and economic factors",
-                              "Currency fluctuation risk",
-                              "Developer financial stability",
-                            ].map((factor) => (
-                              <div
-                                key={factor}
-                                className="flex items-start space-x-2"
-                              >
-                                <Checkbox
-                                  id={factor}
-                                  checked={formData.riskFactors.includes(
-                                    factor,
-                                  )}
-                                  onCheckedChange={() =>
-                                    toggleRiskFactor(factor)
-                                  }
-                                />
-                                <label
-                                  htmlFor={factor}
-                                  className="text-sm cursor-pointer leading-tight"
-                                >
-                                  {factor}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Custom Risk Factor */}
-                          <div>
-                            <Label
-                              htmlFor="customRiskFactor"
-                              className="text-xs"
-                            >
-                              Add Custom Risk Factor
-                            </Label>
-                            <div className="flex gap-2 mt-1">
-                              <Input
-                                id="customRiskFactor"
-                                value={formData.customRiskFactor}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "customRiskFactor",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="Enter custom risk factor"
-                                className="text-sm"
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addCustomRiskFactor();
-                                  }
-                                }}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addCustomRiskFactor}
-                              >
-                                Add
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Display selected custom risk factors */}
-                          {formData.riskFactors.filter(
-                            (f) =>
-                              ![
-                                "Construction timeline risk (if applicable)",
-                                "Market volatility in property sector",
-                                "Rental income may vary based on occupancy",
-                                "Regulatory and economic factors",
-                                "Currency fluctuation risk",
-                                "Developer financial stability",
-                              ].includes(f),
-                          ).length > 0 && (
-                            <div>
-                              <Label className="text-xs mb-2 block">
-                                Custom Risk Factors:
-                              </Label>
-                              <div className="space-y-2">
-                                {formData.riskFactors
-                                  .filter(
-                                    (f) =>
-                                      ![
-                                        "Construction timeline risk (if applicable)",
-                                        "Market volatility in property sector",
-                                        "Rental income may vary based on occupancy",
-                                        "Regulatory and economic factors",
-                                        "Currency fluctuation risk",
-                                        "Developer financial stability",
-                                      ].includes(f),
-                                  )
-                                  .map((factor) => (
-                                    <div
-                                      key={factor}
-                                      className="flex items-center justify-between p-2 bg-background rounded border text-sm"
-                                    >
-                                      <span>{factor}</span>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeRiskFactor(factor)}
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {formData.type === "Off Plan" && (
-                          <div>
-                            <Label htmlFor="offPlanSecurity">
-                              Off-plan Security Notes
-                            </Label>
-                            <Textarea
-                              id="offPlanSecurity"
-                              value={formData.offPlanSecurity}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "offPlanSecurity",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g., Developer escrow account + Bank guarantee"
-                              rows={3}
-                            />
-                          </div>
-                        )}
-
-                        <div>
-                          <Label htmlFor="exitLiquidity">
-                            Exit Liquidity Settings *
-                          </Label>
-                          <Select
-                            value={formData.exitLiquidity}
-                            onValueChange={(val) =>
-                              updateFormData("exitLiquidity", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="High">
-                                High - Can exit within 30 days
-                              </SelectItem>
-                              <SelectItem value="Medium">
-                                Medium - Exit within 60-90 days
-                              </SelectItem>
-                              <SelectItem value="Low">
-                                Low - Exit after 6+ months
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="managementMode">
-                            Management Mode *
-                          </Label>
-                          <Select
-                            value={formData.managementMode}
-                            onValueChange={(val) =>
-                              updateFormData("managementMode", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="BuyOps-managed">
-                                BuyOps-managed
-                              </SelectItem>
-                              <SelectItem value="Self-managed">
-                                Self-managed
-                              </SelectItem>
-                              <SelectItem value="Third-party managed">
-                                Third-party managed
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <CircleAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-xs text-amber-900 dark:text-amber-100">
-                            <strong>Transparency Notice:</strong> All risk
-                            factors, construction progress, and financial
-                            projections are regularly updated and verified by
-                            independent auditors.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 7: Media & Documentation */}
-                    {currentStep === 7 && (
-                      <div className="space-y-4">
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Upload Images</h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            High-quality photos of the property
-                          </p>
-                          <input
-                            ref={imageInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => imageInputRef.current?.click()}
-                          >
-                            Choose Files
-                          </Button>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.images > 0
-                              ? `${formData.images} images uploaded`
-                              : "No images uploaded yet"}
-                          </p>
-                          {uploadedImages.length > 0 && (
-                            <div className="mt-4 space-y-2 text-left">
-                              {uploadedImages.map((file, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
-                                >
-                                  <span className="truncate flex-1">
-                                    {file.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeImage(index)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Upload Documents</h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Legal documents, floor plans, certificates
-                          </p>
-                          <input
-                            ref={documentInputRef}
-                            type="file"
-                            accept=".pdf,.doc,.docx,.txt"
-                            multiple
-                            onChange={handleDocumentUpload}
-                            className="hidden"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => documentInputRef.current?.click()}
-                          >
-                            Choose Files
-                          </Button>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.documents > 0
-                              ? `${formData.documents} documents uploaded`
-                              : "No documents uploaded yet"}
-                          </p>
-                          {uploadedDocuments.length > 0 && (
-                            <div className="mt-4 space-y-2 text-left">
-                              {uploadedDocuments.map((file, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
-                                >
-                                  <span className="truncate flex-1">
-                                    {file.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeDocument(index)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">
-                            Virtual Tour Links
-                          </h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Add 360° virtual tours or video walkthroughs
-                          </p>
-                          <Input
-                            placeholder="https://..."
-                            className="mt-2 max-w-md mx-auto"
-                          />
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.virtualTours > 0
-                              ? `${formData.virtualTours} tours added`
-                              : "No virtual tours added yet"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 8: Commission Setup */}
-                    {currentStep === 8 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="font-medium mb-1">
-                            Commission Structure
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Set commission percentages for agents involved in
-                            the sale
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="leadCommission">
-                              Lead Commission (%) *
-                            </Label>
-                            <Input
-                              id="leadCommission"
-                              type="number"
-                              step="0.1"
-                              value={formData.leadCommission}
-                              onChange={(e) =>
-                                updateFormData("leadCommission", e.target.value)
-                              }
-                              placeholder="1.5"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="closerCommission">
-                              Deal Closer Commission (%) *
-                            </Label>
-                            <Input
-                              id="closerCommission"
-                              type="number"
-                              step="0.1"
-                              value={formData.closerCommission}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "closerCommission",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="1.5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <div className="grid grid-cols-2 gap-4 mb-3">
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Total Commission
-                              </div>
-                              <div className="text-2xl font-semibold text-accent">
-                                {totalCommission.toFixed(1)}%
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Commission per Sale
-                              </div>
-                              <div className="text-2xl font-semibold text-accent">
-                                ₦
-                                {(
-                                  (finalPrice * totalCommission) /
-                                  100
-                                ).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Based on final selling price of ₦
-                            {finalPrice.toLocaleString()}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between p-3 bg-muted rounded">
-                            <span className="text-sm">Lead Agent Earns:</span>
-                            <span className="font-semibold">
-                              ₦
-                              {(
-                                (finalPrice *
-                                  (parseFloat(formData.leadCommission) || 0)) /
-                                100
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-muted rounded">
-                            <span className="text-sm">Closer Agent Earns:</span>
-                            <span className="font-semibold">
-                              ₦
-                              {(
-                                (finalPrice *
-                                  (parseFloat(formData.closerCommission) ||
-                                    0)) /
-                                100
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 9: Review & Publish */}
-                    {currentStep === 9 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h3 className="font-semibold text-lg mb-4">
-                            Asset Summary
-                          </h3>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Asset Name:
-                              </span>
-                              <span className="font-medium text-right">
-                                {formData.name || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Reference Code:
-                              </span>
-                              <span className="font-medium">
-                                {formData.referenceCode || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Type:
-                              </span>
-                              <Badge variant="outline">
-                                {formData.type.toUpperCase() || "—"}
-                              </Badge>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Location:
-                              </span>
-                              <span className="font-medium text-right">
-                                {formData.location || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Property Category:
-                              </span>
-                              <span className="font-medium">
-                                {formData.propertyCategory || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Total Units:
-                              </span>
-                              <span className="font-medium">
-                                {formData.totalUnits || "—"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <h4 className="font-medium text-accent mb-3">
-                            Financial Summary
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">
-                                Final Selling Price:
-                              </span>
-                              <span className="font-semibold">
-                                ₦{finalPrice.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Ownership Type:</span>
-                              <span className="font-medium">
-                                {formData.ownershipType}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">
-                                Total Annual Return:
-                              </span>
-                              <span className="font-semibold text-accent">
-                                {totalAnnualReturn}%
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Total Commission:</span>
-                              <span className="font-semibold">
-                                {totalCommission.toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Investment Returns Summary */}
-                        {(formData.rentalYieldMin ||
-                          formData.rentalYieldMax ||
-                          formData.capitalAppreciationMin ||
-                          formData.capitalAppreciationMax ||
-                          formData.totalReturnsMin ||
-                          formData.totalReturnsMax) && (
-                          <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                            <h4 className="font-medium text-accent mb-3">
-                              Investment Returns (Projected Ranges)
-                            </h4>
-                            <div className="space-y-2">
-                              {(formData.rentalYieldMin ||
-                                formData.rentalYieldMax) && (
-                                <div className="flex justify-between">
-                                  <span className="text-sm">Rental Yield:</span>
-                                  <span className="font-semibold">
-                                    {formData.rentalYieldMin || "—"}-
-                                    {formData.rentalYieldMax || "—"}%
-                                  </span>
-                                </div>
-                              )}
-                              {(formData.capitalAppreciationMin ||
-                                formData.capitalAppreciationMax) && (
-                                <div className="flex justify-between">
-                                  <span className="text-sm">
-                                    Capital Appreciation:
-                                  </span>
-                                  <span className="font-semibold">
-                                    {formData.capitalAppreciationMin || "—"}-
-                                    {formData.capitalAppreciationMax || "—"}%
-                                  </span>
-                                </div>
-                              )}
-                              {(formData.totalReturnsMin ||
-                                formData.totalReturnsMax) && (
-                                <div className="flex justify-between">
-                                  <span className="text-sm">
-                                    Total Returns:
-                                  </span>
-                                  <span className="font-semibold text-accent">
-                                    {formData.totalReturnsMin || "—"}-
-                                    {formData.totalReturnsMax || "—"}%
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="font-medium mb-3">
-                            Risk & Management
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">Project Status:</span>
-                              <span className="font-medium">
-                                {formData.projectStatus || "—"}
-                                {formData.type !== "Land" &&
-                                  formData.constructionProgress &&
-                                  formData.projectStatus !== "Completed" &&
-                                  formData.projectStatus !== "Available" &&
-                                  ` (${formData.constructionProgress}% complete)`}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Risk Level:</span>
-                              <Badge
-                                variant="outline"
-                                className={
-                                  formData.riskLevel === "Low"
-                                    ? "border-accent text-accent"
-                                    : formData.riskLevel === "Medium"
-                                      ? "border-warning text-warning"
-                                      : "border-destructive text-destructive"
-                                }
-                              >
-                                {formData.riskLevel}
-                              </Badge>
-                            </div>
-                            {formData.riskFactors.length > 0 && (
-                              <div>
-                                <span className="text-sm text-muted-foreground block mb-1">
-                                  Risk Factors:
-                                </span>
-                                <ul className="text-sm space-y-1 ml-4">
-                                  {formData.riskFactors
-                                    .slice(0, 3)
-                                    .map((factor, idx) => (
-                                      <li key={idx} className="list-disc">
-                                        {factor}
-                                      </li>
-                                    ))}
-                                  {formData.riskFactors.length > 3 && (
-                                    <li className="text-muted-foreground">
-                                      +{formData.riskFactors.length - 3} more
-                                    </li>
-                                  )}
-                                </ul>
-                              </div>
-                            )}
-                            <div className="flex justify-between">
-                              <span className="text-sm">Exit Liquidity:</span>
-                              <span className="font-medium">
-                                {formData.exitLiquidity}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Management:</span>
-                              <span className="font-medium">
-                                {formData.managementMode}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Publish Status
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Toggle to publish asset immediately
-                            </p>
-                          </div>
-                          <Switch
-                            checked={formData.status === "published"}
-                            onCheckedChange={(val) =>
-                              updateFormData(
-                                "status",
-                                val ? "published" : "draft",
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                          <CircleCheck className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-xs text-green-900 dark:text-green-100">
-                            Review all details carefully before publishing. You
-                            can always edit or unpublish the asset later.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Navigation Footer */}
-                  <DialogFooter className="border-t pt-4 px-6">
-                    <div className="flex justify-between w-full">
-                      <Button
-                        variant="outline"
-                        onClick={prevStep}
-                        disabled={currentStep === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                      </Button>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setCreateDialogOpen(false);
-                            setCurrentStep(1);
-                            setFormData(INITIAL_FORM_DATA);
-                            setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
-                            setCustomFacilityInput("");
-                            setCustomUnitInput("");
-                            setUrbcoCustomFacilityInput("");
-                            setUrbcoCustomAmenityInput("");
-                            setUrbcoCustomReturnSourceInput("");
-                            setMarkupPct("");
-                            setCustomPctInput("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        {selectedPlatform === "URBCO" ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                toast.success("URBCO asset saved as draft");
-                                setCreateDialogOpen(false);
-                                setCurrentStep(1);
-                                setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
-                              }}
-                              disabled={loading}
-                            >
-                              Save & Continue Later
-                            </Button>
-                            {currentStep < totalSteps ? (
-                              <Button onClick={nextStep}>
-                                Next
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                              </Button>
-                            ) : (
-                              <Button onClick={() => {
-                                toast.success("URBCO asset created successfully");
-                                setCreateDialogOpen(false);
-                                setCurrentStep(1);
-                                setUrbcoFormData(URBCO_INITIAL_FORM_DATA);
-                              }}>
-                                {urbcoFormData.status === "published" ? "Publish Asset" : "Save as Draft"}
-                              </Button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleSubmit("draft")}
-                              disabled={loading}
-                            >
-                              Save & Continue Later
-                            </Button>
-                            {currentStep < totalSteps ? (
-                              <Button onClick={nextStep}>
-                                Next
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                              </Button>
-                            ) : (
-                              <Button onClick={() => handleSubmit()}>
-                                {formData.status === "published"
-                                  ? "Publish Asset"
-                                  : "Save as Draft"}
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </DialogFooter>
-                    </>
-                  )}
-                </DialogContent>
-              </Dialog>
-
-              {/* Edit Asset Dialog - Reuses same form structure */}
-              <Dialog
-                open={editDialogOpen}
-                onOpenChange={(open) => {
-                  setEditDialogOpen(open);
-                  if (!open) {
-                    setFormData(INITIAL_FORM_DATA);
-                    setCurrentStep(1);
-                    setMarkupPct("");
-                    setCustomPctInput("");
-                    setError(null);
-                  }
-                }}
-              >
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>Edit Asset</DialogTitle>
-                    <DialogDescription>
-                      Step {currentStep} of {totalSteps}:{" "}
-                      {currentStep === 1
-                        ? "Asset Identity & Status"
-                        : currentStep === 2
-                          ? "Physical Details & Facilities"
-                          : currentStep === 3
-                            ? "Investment Structure"
-                            : currentStep === 4
-                              ? "Pricing Logic"
-                              : currentStep === 5
-                                ? "Returns Projections"
-                                : currentStep === 6
-                                  ? "Risk & Management Assessment"
-                                  : currentStep === 7
-                                    ? "Media & Documentation"
-                                    : currentStep === 8
-                                      ? "Commission Setup"
-                                      : "Review & Publish"}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  {/* Use the same form steps - content is identical to create dialog */}
-                  <div className="flex-1 overflow-y-auto px-6 py-4">
-                    {/* The form fields below are populated with existing asset data through formData state */}
-                    {/* All form steps from create dialog are rendered here with the same formData binding */}
-
-                    {/* Step 1: Asset Identity & Status */}
-                    {currentStep === 1 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="edit-name">Asset Name *</Label>
-                            <Input
-                              id="edit-name"
-                              value={formData.name}
-                              onChange={(e) =>
-                                updateFormData("name", e.target.value)
-                              }
-                              placeholder="e.g., Marina Heights Tower A"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="edit-referenceCode">
-                              Asset Reference Code *
-                            </Label>
-                            <Input
-                              id="edit-referenceCode"
-                              value={formData.referenceCode}
-                              onChange={(e) =>
-                                updateFormData("referenceCode", e.target.value)
-                              }
-                              placeholder="e.g., MHT-A-2024"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="edit-type">Asset Type *</Label>
-                            <Select
-                              value={formData.type}
-                              onValueChange={(val) =>
-                                updateFormData("type", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Land">Land</SelectItem>
-                                <SelectItem value="Off Plan">
-                                  Off Plan
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="edit-projectStatus">
-                              Project Status *
-                            </Label>
-                            <Select
-                              value={formData.projectStatus}
-                              onValueChange={(val) =>
-                                updateFormData("projectStatus", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Planning">
-                                  Planning
-                                </SelectItem>
-                                <SelectItem value="Foundation">
-                                  Foundation
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                                <SelectItem value="Available">
-                                  Available
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-location">Location *</Label>
-                          <Input
-                            id="edit-location"
-                            value={formData.location}
-                            onChange={(e) =>
-                              updateFormData("location", e.target.value)
-                            }
-                            placeholder="e.g., Dubai Marina"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-address">Full Address *</Label>
-                          <Textarea
-                            id="edit-address"
-                            value={formData.address}
-                            onChange={(e) =>
-                              updateFormData("address", e.target.value)
-                            }
-                            placeholder="Enter complete address with plot/unit details"
-                            rows={2}
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-company">Company *</Label>
-                          <Select
-                            value={formData.company}
-                            onValueChange={(val) =>
-                              updateFormData("company", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select company" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {companies.map((company) => (
-                                <SelectItem key={company.id} value={company.id}>
-                                  {company.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="edit-landSize">
-                              Land Size (sqm)
-                            </Label>
-                            <Input
-                              id="edit-landSize"
-                              type="number"
-                              value={formData.landSize}
-                              onChange={(e) =>
-                                updateFormData("landSize", e.target.value)
-                              }
-                              placeholder="5000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="edit-builtSize">
-                              Built-up Size (sqm)
-                            </Label>
-                            <Input
-                              id="edit-builtSize"
-                              type="number"
-                              value={formData.builtSize}
-                              onChange={(e) =>
-                                updateFormData("builtSize", e.target.value)
-                              }
-                              placeholder="45000"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Show construction dates only if not Land or Completed */}
-                        {formData.type !== "Land" &&
-                          formData.type !== "Completed" && (
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="edit-constructionStart">
-                                  Construction Start Date
-                                </Label>
-                                <Input
-                                  id="edit-constructionStart"
-                                  type="date"
-                                  value={formData.constructionStart}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "constructionStart",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="edit-constructionEnd">
-                                  Expected Completion Date
-                                </Label>
-                                <Input
-                                  id="edit-constructionEnd"
-                                  type="date"
-                                  value={formData.constructionEnd}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "constructionEnd",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    )}
-
-                    {/* Step 2: Physical & Functional Details */}
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="edit-propertyCategory">
-                            Property Category *
-                          </Label>
-                          <Select
-                            value={formData.propertyCategory}
-                            onValueChange={(val) =>
-                              updateFormData("propertyCategory", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Residential">
-                                Residential
-                              </SelectItem>
-                              <SelectItem value="Commercial">
-                                Commercial
-                              </SelectItem>
-                              <SelectItem value="Mixed-use">
-                                Mixed-use
-                              </SelectItem>
-                              <SelectItem value="Land">Land</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="edit-totalUnits">
-                              Total Units / Rooms *
-                            </Label>
-                            <Input
-                              id="edit-totalUnits"
-                              type="number"
-                              value={formData.totalUnits}
-                              onChange={(e) =>
-                                updateFormData("totalUnits", e.target.value)
-                              }
-                              placeholder="156"
-                            />
-                          </div>
-                          <div>
-                            <Label className="mb-2 block">
-                              Unit Configuration *
-                            </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {[
-                                "Studio Apartment",
-                                "1 Bedroom",
-                                "2 Bedrooms",
-                                "3 Bedrooms",
-                                "4 Bedrooms",
-                                "5 Bedrooms",
-                              ].map((config) => (
-                                <div
-                                  key={config}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={`edit-unit-${config}`}
-                                    checked={(
-                                      formData.unitConfiguration as string[]
-                                    ).includes(config)}
-                                    onCheckedChange={() =>
-                                      toggleUnitConfig(config)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={`edit-unit-${config}`}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {config}
-                                  </label>
-                                </div>
-                              ))}
-                              {(formData.unitConfiguration as string[])
-                                .filter(
-                                  (c) =>
-                                    ![
-                                      "Studio Apartment",
-                                      "1 Bedroom",
-                                      "2 Bedrooms",
-                                      "3 Bedrooms",
-                                      "4 Bedrooms",
-                                      "5 Bedrooms",
-                                    ].includes(c),
-                                )
-                                .map((config) => (
-                                  <div
-                                    key={config}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <Checkbox
-                                      id={`edit-unit-custom-${config}`}
-                                      checked
-                                      onCheckedChange={() =>
-                                        toggleUnitConfig(config)
-                                      }
-                                    />
-                                    <label
-                                      htmlFor={`edit-unit-custom-${config}`}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {config}
-                                    </label>
-                                  </div>
-                                ))}
-                            </div>
-                            <div className="flex gap-2 mt-2">
-                              <Input
-                                value={customUnitInput}
-                                onChange={(e) =>
-                                  setCustomUnitInput(e.target.value)
-                                }
-                                placeholder="Add custom type"
-                                className="flex-1"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (customUnitInput.trim()) {
-                                    toggleUnitConfig(customUnitInput.trim());
-                                    setCustomUnitInput("");
-                                  }
-                                }}
-                              >
-                                Add
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="edit-furnishingStatus">
-                            Furnishing Status *
-                          </Label>
-                          <Select
-                            value={formData.furnishingStatus}
-                            onValueChange={(val) =>
-                              updateFormData("furnishingStatus", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Unfurnished">
-                                Unfurnished
-                              </SelectItem>
-                              <SelectItem value="Semi-furnished">
-                                Semi-furnished
-                              </SelectItem>
-                              <SelectItem value="Fully furnished">
-                                Fully furnished
-                              </SelectItem>
-                              <SelectItem value="N/A">N/A</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">
-                            Shared Facilities
-                          </Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            {[
-                              "Pool",
-                              "Gym",
-                              "Parking",
-                              "Security",
-                              "Private Beach",
-                              "Spa",
-                              "Retail",
-                              "Meeting Rooms",
-                              "Elevators",
-                            ].map((facility) => (
-                              <div
-                                key={facility}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={`edit-${facility}`}
-                                  checked={formData.sharedFacilities.includes(
-                                    facility,
-                                  )}
-                                  onCheckedChange={() =>
-                                    toggleFacility(facility)
-                                  }
-                                />
-                                <label
-                                  htmlFor={`edit-${facility}`}
-                                  className="text-sm cursor-pointer"
-                                >
-                                  {facility}
-                                </label>
-                              </div>
-                            ))}
-                            {formData.sharedFacilities
-                              .filter(
-                                (f) =>
-                                  ![
-                                    "Pool",
-                                    "Gym",
-                                    "Parking",
-                                    "Security",
-                                    "Private Beach",
-                                    "Spa",
-                                    "Retail",
-                                    "Meeting Rooms",
-                                    "Elevators",
-                                  ].includes(f),
-                              )
-                              .map((customF) => (
-                                <div
-                                  key={customF}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={`edit-custom-${customF}`}
-                                    checked
-                                    onCheckedChange={() =>
-                                      toggleFacility(customF)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={`edit-custom-${customF}`}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {customF}
-                                  </label>
-                                </div>
-                              ))}
-                          </div>
-                          <div className="flex gap-2 mt-3">
-                            <Input
-                              value={customFacilityInput}
-                              onChange={(e) =>
-                                setCustomFacilityInput(e.target.value)
-                              }
-                              placeholder="Add custom facility"
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (customFacilityInput.trim()) {
-                                  toggleFacility(customFacilityInput.trim());
-                                  setCustomFacilityInput("");
-                                }
-                              }}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Facility Management Included
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Is professional facility management included?
-                            </p>
-                          </div>
-                          <Switch
-                            checked={formData.facilityManagement}
-                            onCheckedChange={(val) =>
-                              updateFormData("facilityManagement", val)
-                            }
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 3: Investment Structure */}
-                    {currentStep === 3 && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Ownership Options *</Label>
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Full")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Full"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">Full Ownership</h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Single owner purchases entire asset
-                              </p>
-                            </div>
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Fractional")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Fractional"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">
-                                Fractional Ownership
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Multiple investors own fractions
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {formData.ownershipType === "Fractional" && (
-                          <>
-                            <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                              <h4 className="text-sm font-medium text-accent mb-3">
-                                Fraction Breakdown
-                              </h4>
-                              <div className="grid grid-cols-2 gap-4">
-                                {formData.type === "Land" ? (
-                                  <>
-                                    <div>
-                                      <Label htmlFor="landUnitType">
-                                        Land Units *
-                                      </Label>
-                                      <Select
-                                        id="landUnitType"
-                                        value={formData.landUnitType || ""}
-                                        onValueChange={(val) =>
-                                          updateFormData("landUnitType", val)
-                                        }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select unit" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="sqm">
-                                            Per Square Meter
-                                          </SelectItem>
-                                          <SelectItem value="plot">
-                                            Per Plot
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="landUnitCount">
-                                        Number of Units *
-                                      </Label>
-                                      <Input
-                                        id="landUnitCount"
-                                        type="number"
-                                        value={formData.landUnitCount || ""}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "landUnitCount",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="e.g. 10"
-                                      />
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div>
-                                      <Label htmlFor="fractionTotal">
-                                        Total Fractions *
-                                      </Label>
-                                      <Input
-                                        id="fractionTotal"
-                                        type="number"
-                                        value={formData.fractionTotal}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "fractionTotal",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="100"
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="costPerFraction">
-                                        Cost per Fraction (₦) *
-                                      </Label>
-                                      <Input
-                                        id="costPerFraction"
-                                        type="number"
-                                        value={formData.costPerFraction}
-                                        onChange={(e) =>
-                                          updateFormData(
-                                            "costPerFraction",
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="8500"
-                                      />
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="p-4 bg-muted rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">
-                                  Funding Progress
-                                </span>
-                                <span className="text-sm font-semibold">
-                                  {fundingProgress}%
-                                </span>
-                              </div>
-                              <Progress
-                                value={fundingProgress}
-                                className="h-2"
-                              />
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Auto-calculated based on fraction sales
-                              </p>
-                            </div>
-                          </>
-                        )}
-
-                        {formData.ownershipType === "Full" && (
-                          <div className="p-4 bg-muted rounded-lg text-center">
-                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Full ownership selected. Asset will be sold as a
-                              single unit.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Step 4: Pricing & Payment Logic */}
-                    {currentStep === 4 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="basePrice">
-                              Base Asset Value (₦) *
-                            </Label>
-                            <Input
-                              id="basePrice"
-                              type="number"
-                              value={formData.basePrice}
-                              onChange={(e) => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  basePrice: e.target.value,
-                                  markup: "",
-                                }));
-                                setMarkupPct("");
-                                setCustomPctInput("");
-                                setCustomPctInput("");
-                              }}
-                              placeholder="1200000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="markup">BuyOps Markup *</Label>
-                            <div className="space-y-2">
-                              <Select
-                                value={markupPct}
-                                onValueChange={handleMarkupPctChange}
-                              >
-                                <SelectTrigger id="markup">
-                                  <SelectValue placeholder="Select markup %" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[
-                                    "1",
-                                    "2",
-                                    "3",
-                                    "5",
-                                    "7",
-                                    "10",
-                                    "15",
-                                    "20",
-                                  ].map((pct) => (
-                                    <SelectItem key={pct} value={pct}>
-                                      {pct}%
-                                    </SelectItem>
-                                  ))}
-                                  <SelectItem value="CUSTOM">
-                                    Custom %
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                              {markupPct === "CUSTOM" ? (
-                                <div className="space-y-1">
-                                  <div className="relative">
-                                    <Input
-                                      type="number"
-                                      value={customPctInput}
-                                      onChange={(e) =>
-                                        handleCustomPctChange(e.target.value)
-                                      }
-                                      placeholder="Enter custom %"
-                                      className="pr-8"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                      %
-                                    </span>
-                                  </div>
-                                  {formData.markup && (
-                                    <p className="text-sm text-muted-foreground">
-                                      = ₦
-                                      {Number(formData.markup).toLocaleString()}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                formData.markup && (
-                                  <p className="text-sm text-muted-foreground">
-                                    = ₦
-                                    {Number(formData.markup).toLocaleString()}
-                                  </p>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <div className="text-sm text-muted-foreground">
-                            Final Selling Price
-                          </div>
-                          <div className="text-3xl font-semibold text-accent mt-1">
-                            ₦{finalPrice.toLocaleString()}
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="mb-3 block">
-                            Payment Options *
-                          </Label>
-                          <div className="space-y-2">
-                            {["Full", "Installment", "Stage-based"].map(
-                              (option) => (
-                                <div
-                                  key={option}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={option}
-                                    checked={formData.paymentOptions.includes(
-                                      option,
-                                    )}
-                                    onCheckedChange={() =>
-                                      togglePaymentOption(option)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={option}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {option} Payment
-                                  </label>
-                                </div>
-                              ),
-                            )}
-                          </div>
-                        </div>
-
-                        {formData.paymentOptions.includes("Installment") && (
-                          <div className="p-4 bg-muted rounded-lg space-y-4">
-                            <h4 className="text-sm font-medium">
-                              Installment Configuration
-                            </h4>
-
-                            <div>
-                              <Label htmlFor="downPaymentAmount">
-                                Down Payment Amount (₦) *
-                              </Label>
-                              <Input
-                                id="downPaymentAmount"
-                                type="number"
-                                value={formData.downPaymentAmount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "downPaymentAmount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5000000"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Minimum initial payment required
-                              </p>
-                            </div>
-
-                            <div>
-                              <Label className="mb-3 block">
-                                Allowed Payment Periods *
-                              </Label>
-                              <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  "3 months",
-                                  "6 months",
-                                  "12 months",
-                                  "18 months",
-                                  "24 months",
-                                  "36 months",
-                                ].map((period) => (
-                                  <div
-                                    key={period}
-                                    className="flex items-center space-x-2"
-                                  >
-                                    <Checkbox
-                                      id={period}
-                                      checked={formData.installmentPeriods.includes(
-                                        period,
-                                      )}
-                                      onCheckedChange={() =>
-                                        toggleInstallmentPeriod(period)
-                                      }
-                                    />
-                                    <label
-                                      htmlFor={period}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {period}
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="text-sm font-medium mb-3">
-                            Discount Configuration
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="offPlanDiscount">
-                                Off-plan Discount (%)
-                              </Label>
-                              <Input
-                                id="offPlanDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.offPlanDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "offPlanDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="10"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="stageBasedDiscount">
-                                Stage-based Discount (%)
-                              </Label>
-                              <Input
-                                id="stageBasedDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.stageBasedDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "stageBasedDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-xs text-blue-900 dark:text-blue-100">
-                            <strong>Payment Security:</strong> All payments are
-                            processed through escrow accounts with full investor
-                            protection and transparent transaction tracking.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 5: Returns & Projections */}
-                    {currentStep === 5 && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="projectedRentalIncome">
-                              Projected Rental Income (₦) *
-                            </Label>
-                            <Input
-                              id="projectedRentalIncome"
-                              type="number"
-                              value={formData.projectedRentalIncome}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "projectedRentalIncome",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="75000"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="rentalFrequency">
-                              Rental Frequency *
-                            </Label>
-                            <Select
-                              value={formData.rentalFrequency}
-                              onValueChange={(val) =>
-                                updateFormData("rentalFrequency", val)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Quarterly">
-                                  Quarterly
-                                </SelectItem>
-                                <SelectItem value="Annual">Annual</SelectItem>
-                                <SelectItem value="N/A">N/A</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="operatingCost">
-                            Operating Cost Assumptions (₦/year) *
-                          </Label>
-                          <Input
-                            id="operatingCost"
-                            type="number"
-                            value={formData.operatingCost}
-                            onChange={(e) =>
-                              updateFormData("operatingCost", e.target.value)
-                            }
-                            placeholder="15000"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Include maintenance, management fees, and utilities
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="capitalAppreciation">
-                              Capital Appreciation (% p.a.) *
-                            </Label>
-                            <Input
-                              id="capitalAppreciation"
-                              type="number"
-                              step="0.1"
-                              value={formData.capitalAppreciation}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "capitalAppreciation",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="8.0"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="firstPayoutDate">
-                              First Payout Date
-                            </Label>
-                            <Input
-                              id="firstPayoutDate"
-                              type="date"
-                              value={formData.firstPayoutDate}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "firstPayoutDate",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg space-y-3">
-                          <h4 className="text-sm font-medium text-accent">
-                            Calculated Returns
-                          </h4>
+                        <div className="space-y-3 border-t pt-4">
+                          <Label className="text-sm font-semibold">Risk Classification</Label>
                           <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Rental Yield
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {rentalYield}%
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Capital Growth
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {formData.capitalAppreciation || 0}%
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-muted-foreground">
-                                Total Annual Return
-                              </div>
-                              <div className="text-xl font-semibold text-accent">
-                                {totalAnnualReturn}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-muted rounded-lg space-y-4">
-                          <h4 className="text-sm font-medium">
-                            Projected Investment Returns (Range)
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            Define the expected range of returns for investor
-                            transparency
-                          </p>
-
-                          <div className="space-y-4">
-                            <div>
-                              <Label className="mb-2 block">
-                                Rental Yield Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rentalYieldMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "rentalYieldMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 8)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.rentalYieldMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "rentalYieldMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 10)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Annual rental income as percentage of property
-                                value
-                              </p>
-                            </div>
-
-                            <div>
-                              <Label className="mb-2 block">
-                                Capital Appreciation Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.capitalAppreciationMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "capitalAppreciationMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 15)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.capitalAppreciationMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "capitalAppreciationMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 20)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Expected property value growth per annum
-                              </p>
-                            </div>
-
-                            <div>
-                              <Label className="mb-2 block">
-                                Total Returns Range (%)
-                              </Label>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.totalReturnsMin}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "totalReturnsMin",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Min (e.g., 23)"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.totalReturnsMax}
-                                    onChange={(e) =>
-                                      updateFormData(
-                                        "totalReturnsMax",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Max (e.g., 30)"
-                                  />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Combined annual returns (rental + appreciation)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 6: Risk & Transparency */}
-                    {currentStep === 6 && (
-                      <div className="space-y-4">
-                        {formData.type !== "Land" &&
-                          formData.type !== "Completed" &&
-                          formData.projectStatus &&
-                          formData.projectStatus !== "Completed" &&
-                          formData.projectStatus !== "Available" && (
-                            <div>
-                              <Label htmlFor="constructionProgress">
-                                Construction Progress (%)
-                              </Label>
-                              <Input
-                                id="constructionProgress"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={formData.constructionProgress}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "constructionProgress",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="70"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Current completion percentage of the project
-                              </p>
-                            </div>
-                          )}
-
-                        <div>
-                          <Label>Risk Level *</Label>
-                          <div className="grid grid-cols-3 gap-3 mt-2">
                             {["Low", "Medium", "High"].map((level) => (
-                              <div
+                              <button
                                 key={level}
-                                onClick={() =>
-                                  updateFormData("riskLevel", level)
-                                }
-                                className={`p-3 border-2 rounded-lg cursor-pointer text-center transition-all ${
+                                type="button"
+                                onClick={() => updateFormData("riskLevel", level)}
+                                className={`p-3 text-center border rounded-lg text-sm font-medium transition-all ${
                                   formData.riskLevel === level
                                     ? level === "Low"
-                                      ? "border-accent bg-accent/10 text-accent"
+                                      ? "bg-emerald-500 text-white border-emerald-600"
                                       : level === "Medium"
-                                        ? "border-warning bg-warning/10 text-warning"
-                                        : "border-destructive bg-destructive/10 text-destructive"
-                                    : "border-border hover:border-muted-foreground"
+                                        ? "bg-amber-500 text-white border-amber-600"
+                                        : "bg-red-500 text-white border-red-600"
+                                    : "bg-background border-border text-foreground hover:bg-muted"
                                 }`}
                               >
-                                <div className="font-medium">{level}</div>
-                              </div>
+                                {level} Risk
+                              </button>
                             ))}
                           </div>
                         </div>
+                      </div>
+                    )}
 
-                        <div className="p-4 bg-muted rounded-lg space-y-4">
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">
-                              Investment Risk Factors
-                            </h4>
-                            <p className="text-xs text-muted-foreground mb-3">
-                              Select applicable risk factors for investor
-                              transparency
-                            </p>
-                          </div>
+                    {/* STEP 4: MEDIA, DOCUMENTS & REVIEW */}
+                    {currentStep === 4 && (
+                      <div className="space-y-6">
+                        {/* Media Upload */}
+                        <div className="space-y-4">
+                          <Label className="text-base font-semibold block border-b pb-2">
+                            1. Media & Documentation
+                          </Label>
 
-                          <div className="space-y-2">
-                            {[
-                              "Construction timeline risk (if applicable)",
-                              "Market volatility in property sector",
-                              "Rental income may vary based on occupancy",
-                              "Regulatory and economic factors",
-                              "Currency fluctuation risk",
-                              "Developer financial stability",
-                            ].map((factor) => (
-                              <div
-                                key={factor}
-                                className="flex items-start space-x-2"
-                              >
-                                <Checkbox
-                                  id={factor}
-                                  checked={formData.riskFactors.includes(
-                                    factor,
-                                  )}
-                                  onCheckedChange={() =>
-                                    toggleRiskFactor(factor)
-                                  }
-                                />
-                                <label
-                                  htmlFor={factor}
-                                  className="text-sm cursor-pointer leading-tight"
-                                >
-                                  {factor}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div>
-                            <Label
-                              htmlFor="customRiskFactor"
-                              className="text-xs"
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div
+                              onClick={() => imageInputRef.current?.click()}
+                              className="p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all text-center"
                             >
-                              Add Custom Risk Factor
-                            </Label>
-                            <div className="flex gap-2 mt-1">
-                              <Input
-                                id="customRiskFactor"
-                                value={formData.customRiskFactor}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "customRiskFactor",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="Enter custom risk factor"
-                                className="text-sm"
-                                onKeyPress={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addCustomRiskFactor();
-                                  }
-                                }}
+                              <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                              <span className="text-sm font-medium">Upload Asset Images</span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                {uploadedImages.length} file(s) selected
+                              </span>
+                              <input
+                                ref={imageInputRef}
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageUpload}
                               />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addCustomRiskFactor}
-                              >
-                                Add
-                              </Button>
+                            </div>
+
+                            <div
+                              onClick={() => documentInputRef.current?.click()}
+                              className="p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all text-center"
+                            >
+                              <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                              <span className="text-sm font-medium">Upload Project Documents</span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                {uploadedDocuments.length} document(s) selected
+                              </span>
+                              <input
+                                ref={documentInputRef}
+                                type="file"
+                                multiple
+                                accept=".pdf,.doc,.docx"
+                                className="hidden"
+                                onChange={handleDocumentUpload}
+                              />
                             </div>
                           </div>
-
-                          {formData.riskFactors.filter(
-                            (f) =>
-                              ![
-                                "Construction timeline risk (if applicable)",
-                                "Market volatility in property sector",
-                                "Rental income may vary based on occupancy",
-                                "Regulatory and economic factors",
-                                "Currency fluctuation risk",
-                                "Developer financial stability",
-                              ].includes(f),
-                          ).length > 0 && (
-                            <div>
-                              <Label className="text-xs mb-2 block">
-                                Custom Risk Factors:
-                              </Label>
-                              <div className="space-y-2">
-                                {formData.riskFactors
-                                  .filter(
-                                    (f) =>
-                                      ![
-                                        "Construction timeline risk (if applicable)",
-                                        "Market volatility in property sector",
-                                        "Rental income may vary based on occupancy",
-                                        "Regulatory and economic factors",
-                                        "Currency fluctuation risk",
-                                        "Developer financial stability",
-                                      ].includes(f),
-                                  )
-                                  .map((factor) => (
-                                    <div
-                                      key={factor}
-                                      className="flex items-center justify-between p-2 bg-background rounded border text-sm"
-                                    >
-                                      <span>{factor}</span>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeRiskFactor(factor)}
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
 
-                        {formData.type === "Off Plan" && (
-                          <div>
-                            <Label htmlFor="offPlanSecurity">
-                              Off-plan Security Notes
-                            </Label>
-                            <Textarea
-                              id="offPlanSecurity"
-                              value={formData.offPlanSecurity}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "offPlanSecurity",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="e.g., Developer escrow account + Bank guarantee"
-                              rows={3}
-                            />
-                          </div>
-                        )}
-
-                        <div>
-                          <Label htmlFor="exitLiquidity">
-                            Exit Liquidity Settings *
+                        {/* Commissions */}
+                        <div className="space-y-4 border-t pt-4">
+                          <Label className="text-base font-semibold block border-b pb-2">
+                            2. Agent Commission Splits
                           </Label>
-                          <Select
-                            value={formData.exitLiquidity}
-                            onValueChange={(val) =>
-                              updateFormData("exitLiquidity", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="High">
-                                High - Can exit within 30 days
-                              </SelectItem>
-                              <SelectItem value="Medium">
-                                Medium - Exit within 60-90 days
-                              </SelectItem>
-                              <SelectItem value="Low">
-                                Low - Exit after 6+ months
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="managementMode">
-                            Management Mode *
-                          </Label>
-                          <Select
-                            value={formData.managementMode}
-                            onValueChange={(val) =>
-                              updateFormData("managementMode", val)
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="BuyOps-managed">
-                                BuyOps-managed
-                              </SelectItem>
-                              <SelectItem value="Self-managed">
-                                Self-managed
-                              </SelectItem>
-                              <SelectItem value="Third-party managed">
-                                Third-party managed
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <CircleAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                          <div className="text-xs text-amber-900 dark:text-amber-100">
-                            <strong>Transparency Notice:</strong> All risk
-                            factors, construction progress, and financial
-                            projections are regularly updated and verified by
-                            independent auditors.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 7: Media & Documentation */}
-                    {currentStep === 7 && (
-                      <div className="space-y-4">
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Upload Images</h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            High-quality photos of the property
-                          </p>
-                          <input
-                            ref={imageInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => imageInputRef.current?.click()}
-                          >
-                            Choose Files
-                          </Button>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.images > 0
-                              ? `${formData.images} images uploaded`
-                              : "No images uploaded yet"}
-                          </p>
-                          {uploadedImages.length > 0 && (
-                            <div className="mt-4 space-y-2 text-left">
-                              {uploadedImages.map((file, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
-                                >
-                                  <span className="truncate flex-1">
-                                    {file.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeImage(index)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">Upload Documents</h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Legal documents, floor plans, certificates
-                          </p>
-                          <input
-                            ref={documentInputRef}
-                            type="file"
-                            accept=".pdf,.doc,.docx,.txt"
-                            multiple
-                            onChange={handleDocumentUpload}
-                            className="hidden"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => documentInputRef.current?.click()}
-                          >
-                            Choose Files
-                          </Button>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.documents > 0
-                              ? `${formData.documents} documents uploaded`
-                              : "No documents uploaded yet"}
-                          </p>
-                          {uploadedDocuments.length > 0 && (
-                            <div className="mt-4 space-y-2 text-left">
-                              {uploadedDocuments.map((file, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
-                                >
-                                  <span className="truncate flex-1">
-                                    {file.name}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeDocument(index)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
-                          <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                          <h4 className="font-medium mb-1">
-                            Virtual Tour Links
-                          </h4>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Add 360° virtual tours or video walkthroughs
-                          </p>
-                          <Input
-                            placeholder="https://..."
-                            className="mt-2 max-w-md mx-auto"
-                          />
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {formData.virtualTours > 0
-                              ? `${formData.virtualTours} tours added`
-                              : "No virtual tours added yet"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 8: Commission Setup */}
-                    {currentStep === 8 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="font-medium mb-1">
-                            Commission Structure
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Set commission percentages for agents involved in
-                            the sale
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="leadCommission">
-                              Lead Commission (%) *
-                            </Label>
-                            <Input
-                              id="leadCommission"
-                              type="number"
-                              step="0.1"
-                              value={formData.leadCommission}
-                              onChange={(e) =>
-                                updateFormData("leadCommission", e.target.value)
-                              }
-                              placeholder="1.5"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="closerCommission">
-                              Deal Closer Commission (%) *
-                            </Label>
-                            <Input
-                              id="closerCommission"
-                              type="number"
-                              step="0.1"
-                              value={formData.closerCommission}
-                              onChange={(e) =>
-                                updateFormData(
-                                  "closerCommission",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="1.5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <div className="text-xs text-muted-foreground">
-                                Total Commission
-                              </div>
-                              <div className="text-2xl font-semibold text-accent">
-                                {totalCommission.toFixed(1)}%
-                              </div>
+                              <Label>Lead Agent Commission (%)</Label>
+                              <Input
+                                value={formData.leadCommission}
+                                onChange={(e) => updateFormData("leadCommission", e.target.value)}
+                                placeholder="2.5"
+                              />
                             </div>
                             <div>
-                              <div className="text-xs text-muted-foreground">
-                                Commission per Sale
-                              </div>
-                              <div className="text-2xl font-semibold text-accent">
-                                ₦
-                                {(
-                                  (finalPrice * totalCommission) /
-                                  100
-                                ).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Based on final selling price of ₦
-                            {finalPrice.toLocaleString()}
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between p-3 bg-muted rounded">
-                            <span className="text-sm">Lead Agent Earns:</span>
-                            <span className="font-semibold">
-                              ₦
-                              {(
-                                (finalPrice *
-                                  (parseFloat(formData.leadCommission) || 0)) /
-                                100
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between p-3 bg-muted rounded">
-                            <span className="text-sm">Closer Agent Earns:</span>
-                            <span className="font-semibold">
-                              ₦
-                              {(
-                                (finalPrice *
-                                  (parseFloat(formData.closerCommission) ||
-                                    0)) /
-                                100
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 9: Review & Publish - Should be same as create */}
-                    {currentStep === 9 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h3 className="font-semibold text-lg mb-4">
-                            Asset Summary
-                          </h3>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Asset Name:
-                              </span>
-                              <span className="font-medium text-right">
-                                {formData.name || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Reference Code:
-                              </span>
-                              <span className="font-medium">
-                                {formData.referenceCode || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Type:
-                              </span>
-                              <Badge variant="outline">
-                                {formData.type?.toUpperCase() || "—"}
-                              </Badge>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Location:
-                              </span>
-                              <span className="font-medium text-right">
-                                {formData.location || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Property Category:
-                              </span>
-                              <span className="font-medium">
-                                {formData.propertyCategory || "—"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-start">
-                              <span className="text-sm text-muted-foreground">
-                                Total Units:
-                              </span>
-                              <span className="font-medium">
-                                {formData.totalUnits || "—"}
-                              </span>
+                              <Label>Closer Agent Commission (%)</Label>
+                              <Input
+                                value={formData.closerCommission}
+                                onChange={(e) => updateFormData("closerCommission", e.target.value)}
+                                placeholder="1.5"
+                              />
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
-                          <h4 className="font-medium text-accent mb-3">
-                            Financial Summary
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm">
-                                Final Selling Price:
-                              </span>
-                              <span className="font-semibold">
-                                ₦{finalPrice.toLocaleString()}
-                              </span>
+                        {/* Review Card */}
+                        <div className="p-4 bg-muted/40 rounded-xl border space-y-3">
+                          <h4 className="font-semibold text-sm">Asset Review Summary</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Title:</span>
+                              <div className="font-semibold">{formData.name || "—"}</div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Ownership Type:</span>
-                              <span className="font-medium">
-                                {formData.ownershipType}
-                              </span>
+                            <div>
+                              <span className="text-muted-foreground">Stage:</span>
+                              <div className="font-semibold text-amber-600">{formData.developmentStage}</div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">
-                                Total Annual Return:
-                              </span>
-                              <span className="font-semibold text-accent">
-                                {totalAnnualReturn}%
-                              </span>
+                            <div>
+                              <span className="text-muted-foreground">Application:</span>
+                              <div className="font-semibold text-blue-600">{formData.platform}</div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm">Total Commission:</span>
-                              <span className="font-semibold">
-                                {totalCommission.toFixed(1)}%
-                              </span>
+                            <div>
+                              <span className="text-muted-foreground">Total Price:</span>
+                              <div className="font-semibold">₦{computedFinal.toLocaleString()}</div>
                             </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Publish Status
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Toggle to publish asset immediately
-                            </p>
-                          </div>
-                          <Switch
-                            checked={formData.status === "published"}
-                            onCheckedChange={(val) =>
-                              updateFormData(
-                                "status",
-                                val ? "published" : "draft",
-                              )
-                            }
-                          />
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <DialogFooter className="border-t pt-4 px-6">
-                    <div className="flex justify-between w-full">
+                  {/* Modal Footer Controls */}
+                  <DialogFooter className="p-6 pt-4 border-t bg-muted/20">
+                    <div className="flex items-center justify-between w-full">
                       <Button
                         variant="outline"
                         onClick={prevStep}
@@ -5511,19 +1269,10 @@ export function AssetManagement() {
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
                       </Button>
-                      <div className="flex gap-2">
+
+                      <div className="flex items-center gap-2">
                         <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedPlatform("");
-                            setFormData(INITIAL_FORM_DATA);
-                            setCurrentStep(1);
-                          }}
-                        >
-                          ← Change Platform
-                        </Button>
-                        <Button
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => setCreateDialogOpen(false)}
                         >
                           Cancel
@@ -5533,79 +1282,60 @@ export function AssetManagement() {
                           onClick={() => handleSubmit("draft")}
                           disabled={loading}
                         >
-                          Save & Continue Later
+                          Save Draft
                         </Button>
-                        {currentStep < totalSteps ? (
+                        {currentStep < 4 ? (
                           <Button onClick={nextStep}>
                             Next
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                         ) : (
-                          <Button onClick={() => handleSubmit()}>
-                            {formData.status === "published"
-                              ? "Publish Asset"
-                              : "Save as Draft"}
+                          <Button
+                            onClick={() => handleSubmit("published")}
+                            disabled={loading}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Publish Asset
                           </Button>
                         )}
                       </div>
                     </div>
-                   </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Delete Confirmation Dialog */}
-              <Dialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-              >
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Delete Asset</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to delete this asset? This action
-                      cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <CircleAlert className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-destructive">
-                        Deleting this asset will remove all associated data,
-                        including investment records, media files, and
-                        transaction history. Investors who have purchased units
-                        will be notified.
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setDeleteDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button variant="destructive" onClick={confirmDelete}>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Asset
-                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Filter Bar Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">
-                  Platform
+                  Application
                 </Label>
                 <Select value={filterPlatform} onValueChange={setFilterPlatform}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Platforms</SelectItem>
-                    <SelectItem value="BuyOps">BuyOps</SelectItem>
-                    <SelectItem value="URBCO">URBCO</SelectItem>
+                    <SelectItem value="all">All Applications</SelectItem>
+                    <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                    <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Stage
+                </Label>
+                <Select value={filterDevelopmentStage} onValueChange={setFilterDevelopmentStage}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Stages</SelectItem>
+                    <SelectItem value="Before Development">Before Development</SelectItem>
+                    <SelectItem value="After Development">After Development</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -5620,9 +1350,9 @@ export function AssetManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    {assetTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                    {assetTypes.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -5639,9 +1369,9 @@ export function AssetManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    {assetStatuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {String(status).toUpperCase()}
+                    {assetStatuses.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {String(s).toUpperCase()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -5652,10 +1382,7 @@ export function AssetManagement() {
                 <Label className="text-xs text-muted-foreground mb-2 block">
                   Location
                 </Label>
-                <Select
-                  value={filterLocation}
-                  onValueChange={setFilterLocation}
-                >
+                <Select value={filterLocation} onValueChange={setFilterLocation}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -5680,9 +1407,9 @@ export function AssetManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Companies</SelectItem>
-                    {companies.map((comp) => (
-                      <SelectItem key={comp.id} value={comp.id}>
-                        {comp.name}
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -5697,20 +1424,14 @@ export function AssetManagement() {
       <Card className="shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Assets ({filteredAssets.length})</CardTitle>
-            <div className="text-sm text-muted-foreground">
-              {
-                filteredAssets.filter(
-                  (a) => String(a.status || "").toLowerCase() === "published",
-                ).length
-              }{" "}
-              PUBLISHED •{" "}
-              {
-                filteredAssets.filter(
-                  (a) => String(a.status || "").toLowerCase() === "draft",
-                ).length
-              }{" "}
-              DRAFT
+            <CardTitle>Assets Listing ({filteredAssets.length})</CardTitle>
+            <div className="text-xs text-muted-foreground flex gap-4">
+              <span>
+                {filteredAssets.filter((a) => (a.developmentStage || "Before Development") === "Before Development").length} BEFORE DEV
+              </span>
+              <span>
+                {filteredAssets.filter((a) => a.developmentStage === "After Development").length} AFTER DEV
+              </span>
             </div>
           </div>
         </CardHeader>
@@ -5719,810 +1440,282 @@ export function AssetManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Platform</TableHead>
+                  <TableHead>Application</TableHead>
+                  <TableHead>Development Stage</TableHead>
                   <TableHead>Asset Info</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Units</TableHead>
-                  <TableHead>Final Price</TableHead>
+                  <TableHead>Final Price / Value</TableHead>
                   <TableHead>Returns</TableHead>
-                  <TableHead>Risk</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssets.map((asset) => (
-                  <TableRow key={asset.id}>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          asset.platform === "URBCO"
-                            ? "border-purple-500 text-purple-700 bg-purple-50"
-                            : "border-blue-500 text-blue-700 bg-blue-50"
-                        }
-                      >
-                        {asset.platform || "BuyOps"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{asset.name}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {asset.company?.name || "—"}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{asset.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{asset.location}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="text-sm">
-                        <div className="font-medium">
-                          {asset.availableUnits}/{asset.totalUnits}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          available
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ₦{Number(asset.finalPrice || 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div className="font-semibold text-accent">
-                          {asset.totalAnnualReturn}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          annual
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          asset.riskLevel?.toLowerCase() === "low"
-                            ? "border-accent text-accent"
-                            : asset.riskLevel?.toLowerCase() === "medium"
-                              ? "border-warning text-warning"
-                              : "border-destructive text-destructive"
-                        }
-                      >
-                        {asset.riskLevel
-                          ? asset.riskLevel
-                              .toLowerCase()
-                              .replace(/_/g, " ")
-                              .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                          : "—"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          asset.status?.toLowerCase() === "published"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className={
-                          asset.status?.toLowerCase() === "published"
-                            ? "bg-accent text-accent-foreground"
-                            : ""
-                        }
-                      >
-                        {asset.status
-                          ? asset.status
-                              .toLowerCase()
-                              .replace(/_/g, " ")
-                              .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                          : "—"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleView(asset.id)}
-                          className="h-8 w-8 p-0"
+                {filteredAssets.map((asset) => {
+                  const isFoundry = (asset.platform || "Opco Foundry") === "Opco Foundry";
+                  const isBeforeDev = (asset.developmentStage || "Before Development") === "Before Development";
+
+                  return (
+                    <TableRow key={asset.id}>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isFoundry
+                              ? "border-blue-500 text-blue-700 bg-blue-50"
+                              : "border-purple-500 text-purple-700 bg-purple-50"
+                          }
                         >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(asset.id)}
-                          className="h-8 w-8 p-0"
+                          {asset.platform || "Opco Foundry"}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isBeforeDev
+                              ? "border-amber-500 text-amber-700 bg-amber-50"
+                              : "border-emerald-500 text-emerald-700 bg-emerald-50"
+                          }
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(asset.id)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          {asset.developmentStage || "Before Development"}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <div>
+                          <span className="font-semibold text-sm">{asset.name}</span>
+                          <div className="text-xs text-muted-foreground">
+                            {asset.company?.name || "Partner Developer"}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {asset.type}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="text-sm">{asset.location}</TableCell>
+
+                      <TableCell className="font-semibold text-sm">
+                        ₦{Number(asset.finalPrice || asset.price || 0).toLocaleString()}
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="text-sm">
+                          <span className="font-bold text-emerald-600">
+                            {asset.totalReturnsMax || asset.totalAnnualReturn || "15.0"}%
+                          </span>
+                          <div className="text-[10px] text-muted-foreground uppercase">
+                            {isBeforeDev ? "Projected ROI" : "Actual Cashflow"}
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge
+                          variant={asset.status === "active" || asset.status === "published" ? "default" : "secondary"}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {asset.status || "active"}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleView(asset.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(asset.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(asset.id)}
+                            className="h-8 w-8 p-0 text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
+      {/* View Asset Detail Modal */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Asset Details</DialogTitle>
-            <DialogDescription>
-              Comprehensive view of {viewAsset?.name}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold">{viewAsset?.name}</DialogTitle>
+                <DialogDescription>{viewAsset?.location}</DialogDescription>
+              </div>
+              <div className="flex gap-2">
+                <Badge className="bg-blue-100 text-blue-800">{viewAsset?.platform}</Badge>
+                <Badge className="bg-amber-100 text-amber-800">{viewAsset?.developmentStage}</Badge>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {viewAsset && (
-              <div className="space-y-6">
-                {/* Basic Information */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Basic Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Asset Name
-                      </Label>
-                      <p className="font-medium">{viewAsset.name}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Asset Code
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.serialId || viewAsset.id || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Title</Label>
-                      <p className="font-medium">{viewAsset.title || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Type</Label>
-                      <Badge variant="outline">{viewAsset.type || "—"}</Badge>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Status</Label>
-                      <Badge
-                        variant={
-                          viewAsset.status === "published"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {viewAsset.status || "—"}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Project Status
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.projectStatus || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Location</Label>
-                      <p className="font-medium">{viewAsset.location || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Company</Label>
-                      <p className="font-medium">
-                        {viewAsset.company?.name || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Property Category
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.propertyCategory || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Created</Label>
-                      <p className="text-sm">
-                        {formatDate(viewAsset.createdAt)}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">Address</Label>
-                      <p className="text-sm">{viewAsset.address || "—"}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">
-                        Description
-                      </Label>
-                      <p className="text-sm">{viewAsset.description || "—"}</p>
-                    </div>
-                  </div>
+          {viewAsset && (
+            <div className="space-y-6 pt-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/40 rounded-xl">
+                <div>
+                  <span className="text-xs text-muted-foreground block">Final Price</span>
+                  <span className="font-bold text-base">₦{Number(viewAsset.finalPrice || viewAsset.price || 0).toLocaleString()}</span>
                 </div>
-
-                {/* Physical Details */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Physical Details
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Land Size (sqm)
-                      </Label>
-                      <p className="font-medium">{viewAsset.landSize || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Built Size (sqm)
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.builtSize || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Area (sq m)
-                      </Label>
-                      <p className="font-medium">{viewAsset.area || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Total Units
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.totalUnits || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Available Units
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.availableUnits || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Unit Configuration
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.unitConfiguration || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Bedrooms</Label>
-                      <p className="font-medium">{viewAsset.bedrooms || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Bathrooms</Label>
-                      <p className="font-medium">
-                        {viewAsset.bathrooms || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Parking</Label>
-                      <p className="font-medium">{viewAsset.parking || "—"}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Furnished</Label>
-                      <p className="font-medium">
-                        {viewAsset.furnished || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Facility Management
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.facilityManagement === true
-                          ? "Yes"
-                          : viewAsset.facilityManagement === false
-                            ? "No"
-                            : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Construction Start
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.constructionStart
-                          ? formatDate(viewAsset.constructionStart)
-                          : "—"}
-                      </p>
-                    </div>
-                    <div className="col-span-3">
-                      <Label className="text-muted-foreground">
-                        Facilities
-                      </Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {viewAsset.facilities?.length > 0 ? (
-                          viewAsset.facilities.map((f: string) => (
-                            <Badge key={f} variant="outline">
-                              {f}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm">—</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Category</span>
+                  <span className="font-semibold">{viewAsset.propertyCategory || viewAsset.type}</span>
                 </div>
-
-                {/* Pricing & Investment */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Pricing & Investment
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Ownership Type
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.ownershipType || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Total Fractions
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.fractionTotal || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Price</Label>
-                      <p className="font-medium">
-                        {viewAsset.price
-                          ? `₦${Number(viewAsset.price).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Markup</Label>
-                      <p className="font-medium">
-                        {viewAsset.markup
-                          ? `₦${Number(viewAsset.markup).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Price Range
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.priceRange || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Fraction Cost
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.fractionCost
-                          ? `₦${Number(viewAsset.fractionCost).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Down Payment
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.downPaymentAmount
-                          ? `₦${Number(viewAsset.downPaymentAmount).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Funding Status
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.fundingStatus
-                          ? `${viewAsset.fundingStatus}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Off-plan Discount
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.offPlanDiscount
-                          ? `${viewAsset.offPlanDiscount}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Stage-based Discount
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.stageBasedDiscount
-                          ? `${viewAsset.stageBasedDiscount}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Lead Commission
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.leadCommission
-                          ? `${viewAsset.leadCommission}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Closer Commission
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.closerCommission
-                          ? `${viewAsset.closerCommission}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">
-                        Payment Options
-                      </Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {viewAsset.paymentOptions?.length > 0 ? (
-                          viewAsset.paymentOptions.map((o: string) => (
-                            <Badge key={o} variant="outline">
-                              {o}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm">—</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">
-                        Installment Periods
-                      </Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {viewAsset.installmentPeriods?.length > 0 ? (
-                          viewAsset.installmentPeriods.map((p: string) => (
-                            <Badge key={p} variant="outline">
-                              {p}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm">—</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Developer</span>
+                  <span className="font-semibold">{viewAsset.company?.name || "—"}</span>
                 </div>
-
-                {/* Financial Returns */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Financial Returns
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Projected Rental Income
-                      </Label>
-                      <p className="font-medium text-accent">
-                        {viewAsset.projectedRentalIncome
-                          ? `₦${Number(viewAsset.projectedRentalIncome).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Rental Frequency
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.rentalFrequency || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Operating Cost (yearly)
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.operatingCost
-                          ? `₦${Number(viewAsset.operatingCost).toLocaleString()}`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        First Payout Date
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.firstPayoutDate
-                          ? formatDate(viewAsset.firstPayoutDate)
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Rental Yield
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.rentalYield
-                          ? `${viewAsset.rentalYield}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Rental Yield (Min - Max)
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.rentalYieldMin && viewAsset.rentalYieldMax
-                          ? `${viewAsset.rentalYieldMin}% - ${viewAsset.rentalYieldMax}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Capital Appreciation
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.capitalAppreciation
-                          ? `${viewAsset.capitalAppreciation}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Capital Appreciation (Min - Max)
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.capitalAppreciationMin &&
-                        viewAsset.capitalAppreciationMax
-                          ? `${viewAsset.capitalAppreciationMin}% - ${viewAsset.capitalAppreciationMax}%`
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Total Returns (Min - Max)
-                      </Label>
-                      <p className="font-medium text-accent">
-                        {viewAsset.totalReturnsMin && viewAsset.totalReturnsMax
-                          ? `${viewAsset.totalReturnsMin}% - ${viewAsset.totalReturnsMax}%`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Risk Assessment */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Risk Assessment
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Risk Level
-                      </Label>
-                      <Badge
-                        variant="outline"
-                        className={
-                          viewAsset.riskLevel?.toLowerCase() === "low"
-                            ? "border-accent text-accent"
-                            : viewAsset.riskLevel?.toLowerCase() === "medium"
-                              ? "border-warning text-warning"
-                              : "border-destructive text-destructive"
-                        }
-                      >
-                        {viewAsset.riskLevel || "—"}
-                      </Badge>
-                    </div>
-                    {viewAsset.type !== "Land" &&
-                      viewAsset.type !== "Completed" &&
-                      viewAsset.projectStatus !== "Completed" &&
-                      viewAsset.projectStatus !== "Available" && (
-                        <div>
-                          <Label className="text-muted-foreground">
-                            Construction Stage
-                          </Label>
-                          <p className="font-medium">
-                            {viewAsset.constructionStage || "—"}
-                          </p>
-                        </div>
-                      )}
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Exit Liquidity
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.exitLiquidity || "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Management Mode
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.managementMode || "—"}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">
-                        Off-plan Security
-                      </Label>
-                      <p className="text-sm">
-                        {viewAsset.offPlanSecurity || "—"}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-muted-foreground">
-                        Risk Factors
-                      </Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {viewAsset.riskFactors?.length > 0 ? (
-                          viewAsset.riskFactors.map((f: string) => (
-                            <Badge
-                              key={f}
-                              variant="outline"
-                              className="border-warning text-warning"
-                            >
-                              {f}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm">—</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Media */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Media & Documentation
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">Images</Label>
-                      <p className="font-medium">
-                        {viewAsset.images?.length || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Documents</Label>
-                      <p className="font-medium">
-                        {viewAsset.documents?.length || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Virtual Tours
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset.virtualTours || 0}
-                      </p>
-                    </div>
-                  </div>
-
-                  {viewAsset.images?.length > 0 && (
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Image Gallery
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {viewAsset.images.map((img: any) => (
-                          <div
-                            key={img.id}
-                            className="relative aspect-video rounded overflow-hidden border"
-                          >
-                            <img
-                              src={resolveMediaUrl(img.url)}
-                              alt={img.caption || "Asset image"}
-                              className="w-full h-full object-cover"
-                            />
-                            {img.caption && (
-                              <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
-                                {img.caption}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {viewAsset.documents?.length > 0 && (
-                    <div>
-                      <Label className="text-muted-foreground">Documents</Label>
-                      <div className="space-y-2 mt-2">
-                        {viewAsset.documents.map((doc: any) => (
-                          <div
-                            key={doc.id}
-                            className="flex items-center gap-2 p-2 border rounded"
-                          >
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{doc.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {doc.type}
-                              </p>
-                            </div>
-                            <Button variant="ghost" size="sm" asChild>
-                              <a
-                                href={resolveMediaUrl(doc.url)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                View
-                              </a>
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Activity Stats */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold border-b pb-2">
-                    Activity
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Total Leads
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset._count?.leads || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">
-                        Total Transactions
-                      </Label>
-                      <p className="font-medium">
-                        {viewAsset._count?.transactions || 0}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Created</Label>
-                      <p className="text-sm">
-                        {formatDate(viewAsset.createdAt)}
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Return Metric</span>
+                  <span className="font-bold text-emerald-600">{viewAsset.totalReturnsMax || viewAsset.totalAnnualReturn || "15"}%</span>
                 </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
-              Close
+              <div>
+                <h4 className="font-semibold border-b pb-1 mb-2">Description</h4>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {viewAsset.description || "No specific overview provided for this asset."}
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Asset</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this asset? Action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={loading}>
+              Delete Asset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Asset Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Asset</DialogTitle>
+            <DialogDescription>Update details for {formData.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2 text-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Development Stage</Label>
+                <Select
+                  value={formData.developmentStage}
+                  onValueChange={(val) => updateFormData("developmentStage", val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Before Development">Before Development</SelectItem>
+                    <SelectItem value="After Development">After Development</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Application</Label>
+                <Select
+                  value={formData.platform}
+                  onValueChange={(val) => updateFormData("platform", val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                    <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Asset Name</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => updateFormData("name", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-location">Location</Label>
+                <Input
+                  id="edit-location"
+                  value={formData.location}
+                  onChange={(e) => updateFormData("location", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-base-price">Base Price / Valuation (₦)</Label>
+                <Input
+                  id="edit-base-price"
+                  type="number"
+                  value={formData.basePrice}
+                  onChange={(e) => updateFormData("basePrice", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-markup">Markup (₦)</Label>
+                <Input
+                  id="edit-markup"
+                  type="number"
+                  value={formData.markup}
+                  onChange={(e) => updateFormData("markup", e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={loading}>
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

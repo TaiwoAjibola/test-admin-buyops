@@ -369,15 +369,15 @@ export function Users() {
         <TabsContent value={selectedRole} className="space-y-6">
           {selectedRole === "INVESTOR" && (
             <div className="flex items-center gap-4">
-              <Label className="text-sm">Filter by Platform:</Label>
+              <Label className="text-sm">Filter by Application:</Label>
               <Select value={investorPlatform} onValueChange={setInvestorPlatform}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Platforms</SelectItem>
-                  <SelectItem value="BuyOps">BuyOps</SelectItem>
-                  <SelectItem value="URBCO">URBCO</SelectItem>
+                  <SelectItem value="all">All Applications</SelectItem>
+                  <SelectItem value="Opco Foundry">Opco Foundry</SelectItem>
+                  <SelectItem value="Opco Harbor">Opco Harbor</SelectItem>
                 </SelectContent>
               </Select>
               <div className="text-sm text-muted-foreground">
@@ -687,12 +687,12 @@ export function Users() {
                                 <Badge
                                   variant="outline"
                                   className={
-                                    investor.investorPlatform === "URBCO"
-                                      ? "border-purple-500 text-purple-700"
-                                      : "border-blue-500 text-blue-700"
+                                    investor.investorPlatform === "Opco Harbor"
+                                      ? "border-purple-500 text-purple-700 bg-purple-50"
+                                      : "border-blue-500 text-blue-700 bg-blue-50"
                                   }
                                 >
-                                  {investor.investorPlatform}
+                                  {investor.investorPlatform || "Opco Foundry"}
                                 </Badge>
                               </TableCell>
                               <TableCell>
