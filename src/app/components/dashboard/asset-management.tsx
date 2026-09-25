@@ -193,9 +193,37 @@ export function AssetManagement() {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customFacilityInput, setCustomFacilityInput] = useState("");
+  const [customUnitInput, setCustomUnitInput] = useState("");
+  const [markupPct, setMarkupPct] = useState("");
+  const [customPctInput, setCustomPctInput] = useState("");
+
+  const totalSteps = 9;
 
   const updateFormData = (key: keyof typeof INITIAL_FORM_DATA, value: any) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleMarkupPctChange = (pct: string) => {
+    setMarkupPct(pct);
+    if (pct !== "CUSTOM" && pct) {
+      const base = parseFloat(formData.basePrice) || 0;
+      const amount = ((parseFloat(pct) / 100) * base).toFixed(0);
+      updateFormData("markup", amount);
+    } else if (pct === "CUSTOM") {
+      setCustomPctInput("");
+      updateFormData("markup", "");
+    }
+  };
+
+  const handleCustomPctChange = (pct: string) => {
+    setCustomPctInput(pct);
+    const base = parseFloat(formData.basePrice) || 0;
+    const num = parseFloat(pct);
+    updateFormData(
+      "markup",
+      !pct || isNaN(num) ? "" : ((num / 100) * base).toFixed(0),
+    );
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,6 +277,102 @@ export function AssetManagement() {
     filterLocation !== "all" ||
     filterCompany !== "all";
 
+  const toggleFacility = (facility: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      sharedFacilities: prev.sharedFacilities.includes(facility)
+        ? prev.sharedFacilities.filter((f) => f !== facility)
+        : [...prev.sharedFacilities, facility],
+    }));
+  };
+
+  const toggleUnitConfig = (config: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      unitConfiguration: (prev.unitConfiguration as string[]).includes(config)
+        ? (prev.unitConfiguration as string[]).filter((c) => c !== config)
+        : [...(prev.unitConfiguration as string[]), config],
+    }));
+  };
+
+  const togglePaymentOption = (option: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      paymentOptions: prev.paymentOptions.includes(option)
+        ? prev.paymentOptions.filter((o) => o !== option)
+        : [...prev.paymentOptions, option],
+    }));
+  };
+
+  const toggleInstallmentPeriod = (period: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      installmentPeriods: prev.installmentPeriods.includes(period)
+        ? prev.installmentPeriods.filter((p) => p !== period)
+        : [...prev.installmentPeriods, period],
+    }));
+  };
+
+  const toggleRiskFactor = (factor: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      riskFactors: prev.riskFactors.includes(factor)
+        ? prev.riskFactors.filter((f) => f !== factor)
+        : [...prev.riskFactors, factor],
+    }));
+  };
+
+  const addCustomRiskFactor = () => {
+    if (formData.customRiskFactor.trim()) {
+      setFormData((prev) => ({
+        ...prev,
+        riskFactors: [...prev.riskFactors, formData.customRiskFactor.trim()],
+        customRiskFactor: "",
+      }));
+    }
+  };
+
+  const removeRiskFactor = (factor: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      riskFactors: prev.riskFactors.filter((f) => f !== factor),
+    }));
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({ ...prev, images: prev.images - 1 }));
+  };
+
+  const removeDocument = (index: number) => {
+    setUploadedDocuments((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({ ...prev, documents: prev.documents - 1 }));
+  };
+
+  // Calculated values
+  const finalPrice =
+    (parseFloat(formData.basePrice) || 0) + (parseFloat(formData.markup) || 0);
+  const rentalYield =
+    formData.projectedRentalIncome && finalPrice > 0
+      ? (
+          (parseFloat(formData.projectedRentalIncome) / finalPrice) *
+          100
+        ).toFixed(2)
+      : "0.00";
+  const totalAnnualReturn =
+    rentalYield && formData.capitalAppreciation
+      ? (
+          parseFloat(rentalYield) + parseFloat(formData.capitalAppreciation)
+        ).toFixed(2)
+      : "0.00";
+  const totalCommission =
+    (parseFloat(formData.leadCommission) || 0) +
+    (parseFloat(formData.closerCommission) || 0);
+  const fundingProgress =
+    formData.ownershipType === "Fractional" && formData.fractionTotal
+      ? Math.floor(Math.random() * 100)
+      : 100;
+
   // Step Navigation & Validation
   const validateStep1 = () => {
     if (!formData.name.trim()) {
@@ -268,7 +392,7 @@ export function AssetManagement() {
 
   const nextStep = () => {
     if (currentStep === 1 && !validateStep1()) return;
-    if (currentStep < 4) setCurrentStep((prev) => prev + 1);
+    if (currentStep < totalSteps) setCurrentStep((prev) => prev + 1);
   };
 
   const prevStep = () => {
@@ -498,14 +622,24 @@ export function AssetManagement() {
                           Create New Asset
                         </DialogTitle>
                         <DialogDescription className="mt-1 text-sm">
-                          Step {currentStep} of 4:{" "}
+                          Step {currentStep} of {totalSteps}:{" "}
                           {currentStep === 1
-                            ? "Level 1 Basic Information & Stage"
+                            ? "Asset Identity & Status"
                             : currentStep === 2
-                              ? "Financial Configuration & Application"
+                              ? "Physical Details & Facilities"
                               : currentStep === 3
-                                ? "Investment Returns & Risk Assessment"
-                                : "Media, Documentation & Review"}
+                                ? "Investment Structure"
+                                : currentStep === 4
+                                  ? "Pricing Logic"
+                                  : currentStep === 5
+                                    ? "Returns Projections"
+                                    : currentStep === 6
+                                      ? "Risk & Management Assessment"
+                                      : currentStep === 7
+                                        ? "Media & Documentation"
+                                        : currentStep === 8
+                                          ? "Commission Setup"
+                                          : "Review & Publish"}
                         </DialogDescription>
                       </div>
                       <Badge
@@ -524,11 +658,10 @@ export function AssetManagement() {
                     <div className="w-full bg-secondary h-2 rounded-full mt-4 overflow-hidden">
                       <div
                         className="bg-primary h-full transition-all duration-300"
-                        style={{ width: `${(currentStep / 4) * 100}%` }}
+                        style={{ width: `${(currentStep / totalSteps) * 100}%` }}
                       />
                     </div>
                   </DialogHeader>
-
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {error && (
                       <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 text-sm">
@@ -536,13 +669,13 @@ export function AssetManagement() {
                       </div>
                     )}
 
-                    {/* STEP 1: LEVEL 1 BASIC INFORMATION & DEVELOPMENT STAGE */}
+                    {/* Step 1: Asset Identity & Status */}
                     {currentStep === 1 && (
-                      <div className="space-y-6">
-                        {/* Development Stage Card Selection */}
+                      <div className="space-y-4">
+                        {/* Development Stage Selection */}
                         <div>
                           <Label className="text-base font-semibold mb-2 block">
-                            1. Select Development Stage *
+                            Development Stage *
                           </Label>
                           <p className="text-xs text-muted-foreground mb-3">
                             Determines investment structure, cost details, ROI metrics, and investor targeting.
@@ -557,19 +690,18 @@ export function AssetManagement() {
                               }`}
                             >
                               <div className="flex items-center gap-3 mb-2">
-                                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-700 dark:text-amber-300 font-bold">
-                                  <Zap className="h-5 w-5" />
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
+                                  BD
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-sm">Before Development</h4>
-                                  <span className="text-xs text-amber-600 font-medium">Pre-construction / Off-plan</span>
+                                  <span className="text-xs text-amber-600 font-medium">Pre-development Stage</span>
                                 </div>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                For planning, land acquisition, foundation, and early construction investments. Tracks pre-funding targets and projected ROI.
+                                Land acquisition, planning, feasibility, and early construction funding.
                               </p>
                             </div>
-
                             <div
                               onClick={() => updateFormData("developmentStage", "After Development")}
                               className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
@@ -579,192 +711,25 @@ export function AssetManagement() {
                               }`}
                             >
                               <div className="flex items-center gap-3 mb-2">
-                                <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold">
-                                  <CheckCircle2 className="h-5 w-5" />
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                                  AD
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-sm">After Development</h4>
-                                  <span className="text-xs text-emerald-600 font-medium">Completed / Ready Asset</span>
+                                  <span className="text-xs text-emerald-600 font-medium">Post-development Stage</span>
                                 </div>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                For finished properties and active revenue-generating assets. Tracks current valuation, actual rental yields, and cashflow.
+                                Completed or near-completion properties ready for sale or investment.
                               </p>
                             </div>
                           </div>
                         </div>
 
-                        {/* Basic Details */}
-                        <div className="space-y-4">
-                          <Label className="text-base font-semibold block border-b pb-2">
-                            2. Identity & Developer Info
-                          </Label>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="asset-name">Asset Title / Name *</Label>
-                              <Input
-                                id="asset-name"
-                                value={formData.name}
-                                onChange={(e) => updateFormData("name", e.target.value)}
-                                placeholder="e.g. Marina Heights Tower A"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="asset-ref">Reference Code / Slug</Label>
-                              <Input
-                                id="asset-ref"
-                                value={formData.referenceCode}
-                                onChange={(e) => updateFormData("referenceCode", e.target.value)}
-                                placeholder="e.g. MHT-A-2026"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label>Property Category *</Label>
-                              <Select
-                                value={formData.propertyCategory}
-                                onValueChange={(val) => updateFormData("propertyCategory", val)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Residential">Residential</SelectItem>
-                                  <SelectItem value="Commercial">Commercial</SelectItem>
-                                  <SelectItem value="Industrial">Industrial</SelectItem>
-                                  <SelectItem value="Mixed-use">Mixed-use</SelectItem>
-                                  <SelectItem value="Land">Land</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div>
-                              <Label>Asset Type *</Label>
-                              <Select
-                                value={formData.type}
-                                onValueChange={(val) => updateFormData("type", val)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Off Plan">Off Plan</SelectItem>
-                                  <SelectItem value="Completed">Completed</SelectItem>
-                                  <SelectItem value="Under Construction">Under Construction</SelectItem>
-                                  <SelectItem value="Land">Land</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div>
-                              <Label>Developer / Company *</Label>
-                              <Select
-                                value={formData.company}
-                                onValueChange={(val) => updateFormData("company", val)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select partner developer" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {companies.map((c) => (
-                                    <SelectItem key={c.id} value={c.id}>
-                                      {c.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="asset-location">Location / Neighborhood *</Label>
-                              <Input
-                                id="asset-location"
-                                value={formData.location}
-                                onChange={(e) => updateFormData("location", e.target.value)}
-                                placeholder="e.g. Victoria Island, Lagos"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="asset-address">Full Address</Label>
-                              <Input
-                                id="asset-address"
-                                value={formData.address}
-                                onChange={(e) => updateFormData("address", e.target.value)}
-                                placeholder="e.g. Plot 1234, Marina Road"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Physical Specs */}
-                        <div className="space-y-4">
-                          <Label className="text-base font-semibold block border-b pb-2">
-                            3. Physical & Specifications
-                          </Label>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                              <Label>Land Size (sqm)</Label>
-                              <Input
-                                value={formData.landSize}
-                                onChange={(e) => updateFormData("landSize", e.target.value)}
-                                placeholder="e.g. 5000"
-                              />
-                            </div>
-                            <div>
-                              <Label>Built Size (sqm)</Label>
-                              <Input
-                                value={formData.builtSize}
-                                onChange={(e) => updateFormData("builtSize", e.target.value)}
-                                placeholder="e.g. 45000"
-                              />
-                            </div>
-                            <div>
-                              <Label>Total Units</Label>
-                              <Input
-                                type="number"
-                                value={formData.totalUnits}
-                                onChange={(e) => updateFormData("totalUnits", e.target.value)}
-                                placeholder="156"
-                              />
-                            </div>
-                            <div>
-                              <Label>Available Units</Label>
-                              <Input
-                                type="number"
-                                value={formData.availableUnits}
-                                onChange={(e) => updateFormData("availableUnits", e.target.value)}
-                                placeholder="142"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="asset-desc">Property Overview / Description</Label>
-                            <Textarea
-                              id="asset-desc"
-                              rows={3}
-                              value={formData.description}
-                              onChange={(e) => updateFormData("description", e.target.value)}
-                              placeholder="Describe the property, architectural highlights, and strategic location advantages..."
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STEP 2: FINANCIAL CONFIGURATION & APPLICATION SORTING */}
-                    {currentStep === 2 && (
-                      <div className="space-y-6">
-                        {/* Application Sorting Selection */}
+                        {/* Application Sorting */}
                         <div>
                           <Label className="text-base font-semibold mb-2 block">
-                            1. Select Application Sorting *
+                            Application Sorting *
                           </Label>
                           <p className="text-xs text-muted-foreground mb-3">
                             Specify whether this asset belongs to Urbco Foundry or Urbco Harbor for user access & level routing.
@@ -791,7 +756,6 @@ export function AssetManagement() {
                                 High-velocity property sales, core commercial assets, and primary investment portfolios.
                               </p>
                             </div>
-
                             <div
                               onClick={() => updateFormData("platform", "Urbco Harbor")}
                               className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
@@ -816,442 +780,1918 @@ export function AssetManagement() {
                           </div>
                         </div>
 
-                        {/* Financial Inputs Adapted to Stage */}
-                        <div className="space-y-4 border-t pt-4">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-base font-semibold">
-                              2. Financial Structure ({formData.developmentStage})
-                            </Label>
-                            <Badge variant="secondary">{formData.platform}</Badge>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="name">Asset Name *</Label>
+                            <Input
+                              id="name"
+                              value={formData.name}
+                              onChange={(e) =>
+                                updateFormData("name", e.target.value)
+                              }
+                              placeholder="e.g., Marina Heights Tower A"
+                            />
                           </div>
+                          <div>
+                            <Label htmlFor="referenceCode">
+                              Asset Reference Code *
+                            </Label>
+                            <Input
+                              id="referenceCode"
+                              value={formData.referenceCode}
+                              onChange={(e) =>
+                                updateFormData("referenceCode", e.target.value)
+                              }
+                              placeholder="e.g., MHT-A-2024"
+                            />
+                          </div>
+                        </div>
 
-                          {formData.developmentStage === "Before Development" ? (
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Land / Pre-development Cost (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.basePrice}
-                                    onChange={(e) => updateFormData("basePrice", e.target.value)}
-                                    placeholder="e.g. 500000000"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Estimated Construction Cost (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.estimatedDevCost}
-                                    onChange={(e) => updateFormData("estimatedDevCost", e.target.value)}
-                                    placeholder="e.g. 2500000000"
-                                  />
-                                </div>
-                              </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="type">Asset Type *</Label>
+                            <Select
+                              value={formData.type}
+                              onValueChange={(val) =>
+                                updateFormData("type", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Land">Land</SelectItem>
+                                <SelectItem value="Off Plan">
+                                  Off Plan
+                                </SelectItem>
+                                <SelectItem value="Under Construction">
+                                  Under Construction
+                                </SelectItem>
+                                <SelectItem value="Completed">
+                                  Completed
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="projectStatus">
+                              Project Status *
+                            </Label>
+                            <Select
+                              value={formData.projectStatus}
+                              onValueChange={(val) =>
+                                updateFormData("projectStatus", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Planning">
+                                  Planning
+                                </SelectItem>
+                                <SelectItem value="Foundation">
+                                  Foundation
+                                </SelectItem>
+                                <SelectItem value="Under Construction">
+                                  Under Construction
+                                </SelectItem>
+                                <SelectItem value="Completed">
+                                  Completed
+                                </SelectItem>
+                                <SelectItem value="Available">
+                                  Available
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Urbco Markup (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.markup}
-                                    onChange={(e) => updateFormData("markup", e.target.value)}
-                                    placeholder="e.g. 75000000"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Off-Plan / Pre-Launch Discount (%)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.offPlanDiscount}
-                                    onChange={(e) => updateFormData("offPlanDiscount", e.target.value)}
-                                    placeholder="e.g. 10"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Base Property Valuation (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.basePrice}
-                                    onChange={(e) => updateFormData("basePrice", e.target.value)}
-                                    placeholder="e.g. 8500000000"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Urbco Markup (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.markup}
-                                    onChange={(e) => updateFormData("markup", e.target.value)}
-                                    placeholder="e.g. 1275000000"
-                                  />
-                                </div>
-                              </div>
+                        <div>
+                          <Label htmlFor="location">Location *</Label>
+                          <Input
+                            id="location"
+                            value={formData.location}
+                            onChange={(e) =>
+                              updateFormData("location", e.target.value)
+                            }
+                            placeholder="e.g., Dubai Marina"
+                          />
+                        </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Annual Operating Cost (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.operatingCost}
-                                    onChange={(e) => updateFormData("operatingCost", e.target.value)}
-                                    placeholder="e.g. 150000000"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Required Down Payment (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.downPaymentAmount}
-                                    onChange={(e) => updateFormData("downPaymentAmount", e.target.value)}
-                                    placeholder="e.g. 1500000000"
-                                  />
-                                </div>
+                        <div>
+                          <Label htmlFor="address">Full Address *</Label>
+                          <Textarea
+                            id="address"
+                            value={formData.address}
+                            onChange={(e) =>
+                              updateFormData("address", e.target.value)
+                            }
+                            placeholder="Enter complete address with plot/unit details"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="company">Company *</Label>
+                          <Select
+                            value={formData.company}
+                            onValueChange={(val) =>
+                              updateFormData("company", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select company" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                  {company.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="landSize">Land Size (sqm)</Label>
+                            <Input
+                              id="landSize"
+                              type="number"
+                              value={formData.landSize}
+                              onChange={(e) =>
+                                updateFormData("landSize", e.target.value)
+                              }
+                              placeholder="5000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="builtSize">
+                              Built-up Size (sqm)
+                            </Label>
+                            <Input
+                              id="builtSize"
+                              type="number"
+                              value={formData.builtSize}
+                              onChange={(e) =>
+                                updateFormData("builtSize", e.target.value)
+                              }
+                              placeholder="45000"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Show construction dates only if not Land or Completed */}
+                        {formData.type !== "Land" &&
+                          formData.type !== "Completed" && (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="constructionStart">
+                                  Construction Start Date
+                                </Label>
+                                <Input
+                                  id="constructionStart"
+                                  type="date"
+                                  value={formData.constructionStart}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "constructionStart",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="constructionEnd">
+                                  Expected Completion Date
+                                </Label>
+                                <Input
+                                  id="constructionEnd"
+                                  type="date"
+                                  value={formData.constructionEnd}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "constructionEnd",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
                               </div>
                             </div>
                           )}
+                      </div>
+                    )}
 
-                          {/* Calculated Pricing Card */}
-                          <div className="p-4 bg-muted/50 rounded-xl border flex items-center justify-between">
-                            <div>
-                              <span className="text-xs text-muted-foreground uppercase font-semibold">
-                                Total Final Price / Investment Value
-                              </span>
-                              <div className="text-2xl font-bold flex items-center gap-1 text-primary">
-                                <NairaSign />
-                                {computedFinal.toLocaleString()}
-                              </div>
+                    {/* Step 2: Physical & Functional Details */}
+                    {currentStep === 2 && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="propertyCategory">
+                            Property Category *
+                          </Label>
+                          <Select
+                            value={formData.propertyCategory}
+                            onValueChange={(val) =>
+                              updateFormData("propertyCategory", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Residential">
+                                Residential
+                              </SelectItem>
+                              <SelectItem value="Commercial">
+                                Commercial
+                              </SelectItem>
+                              <SelectItem value="Mixed-use">
+                                Mixed-use
+                              </SelectItem>
+                              <SelectItem value="Land">Land</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="totalUnits">
+                              Total Units / Rooms *
+                            </Label>
+                            <Input
+                              id="totalUnits"
+                              type="number"
+                              value={formData.totalUnits}
+                              onChange={(e) =>
+                                updateFormData("totalUnits", e.target.value)
+                              }
+                              placeholder="156"
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-2 block">
+                              Unit Configuration *
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                "Studio Apartment",
+                                "1 Bedroom",
+                                "2 Bedrooms",
+                                "3 Bedrooms",
+                                "4 Bedrooms",
+                                "5 Bedrooms",
+                              ].map((config) => (
+                                <div
+                                  key={config}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={`unit-${config}`}
+                                    checked={(
+                                      formData.unitConfiguration as string[]
+                                    ).includes(config)}
+                                    onCheckedChange={() =>
+                                      toggleUnitConfig(config)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`unit-${config}`}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {config}
+                                  </label>
+                                </div>
+                              ))}
+                              {(formData.unitConfiguration as string[])
+                                .filter(
+                                  (c) =>
+                                    ![
+                                      "Studio Apartment",
+                                      "1 Bedroom",
+                                      "2 Bedrooms",
+                                      "3 Bedrooms",
+                                      "4 Bedrooms",
+                                      "5 Bedrooms",
+                                    ].includes(c),
+                                )
+                                .map((config) => (
+                                  <div
+                                    key={config}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <Checkbox
+                                      id={`unit-${config}`}
+                                      checked
+                                      onCheckedChange={() =>
+                                        toggleUnitConfig(config)
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={`unit-${config}`}
+                                      className="text-sm cursor-pointer"
+                                    >
+                                      {config}
+                                    </label>
+                                  </div>
+                                ))}
                             </div>
-                            <div className="text-right text-xs text-muted-foreground">
-                              <div>Base: ₦{computedBase.toLocaleString()}</div>
-                              <div>Markup: ₦{computedMarkup.toLocaleString()}</div>
+                            <div className="flex gap-2 mt-2">
+                              <Input
+                                value={customUnitInput}
+                                onChange={(e) =>
+                                  setCustomUnitInput(e.target.value)
+                                }
+                                placeholder="Add custom type"
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (customUnitInput.trim()) {
+                                    toggleUnitConfig(customUnitInput.trim());
+                                    setCustomUnitInput("");
+                                  }
+                                }}
+                              >
+                                Add
+                              </Button>
                             </div>
                           </div>
+                        </div>
 
-                          {/* Ownership Type */}
-                          <div className="space-y-2">
-                            <Label>Ownership Structure</Label>
-                            <div className="flex gap-4">
-                              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="ownershipType"
-                                  checked={formData.ownershipType === "Full"}
-                                  onChange={() => updateFormData("ownershipType", "Full")}
-                                />
-                                Full Title Ownership
-                              </label>
-                              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="ownershipType"
-                                  checked={formData.ownershipType === "Fractional"}
-                                  onChange={() => updateFormData("ownershipType", "Fractional")}
-                                />
-                                Fractional / Co-investment
-                              </label>
-                            </div>
+                        <div>
+                          <Label htmlFor="furnishingStatus">
+                            Furnishing Status *
+                          </Label>
+                          <Select
+                            value={formData.furnishingStatus}
+                            onValueChange={(val) =>
+                              updateFormData("furnishingStatus", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Unfurnished">
+                                Unfurnished
+                              </SelectItem>
+                              <SelectItem value="Semi-furnished">
+                                Semi-furnished
+                              </SelectItem>
+                              <SelectItem value="Fully furnished">
+                                Fully furnished
+                              </SelectItem>
+                              <SelectItem value="N/A">N/A</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                            {formData.ownershipType === "Fractional" && (
-                              <div className="grid grid-cols-2 gap-4 pt-2">
-                                <div>
-                                  <Label>Total Fractions</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.fractionTotal}
-                                    onChange={(e) => updateFormData("fractionTotal", e.target.value)}
-                                    placeholder="1000"
-                                  />
-                                </div>
-                                <div>
-                                  <Label>Cost Per Fraction (₦)</Label>
-                                  <Input
-                                    type="number"
-                                    value={formData.costPerFraction}
-                                    onChange={(e) => updateFormData("costPerFraction", e.target.value)}
-                                    placeholder="5000000"
-                                  />
-                                </div>
+                        <div>
+                          <Label className="mb-3 block">
+                            Shared Facilities
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              "Pool",
+                              "Gym",
+                              "Parking",
+                              "Security",
+                              "Private Beach",
+                              "Spa",
+                              "Retail",
+                              "Meeting Rooms",
+                              "Elevators",
+                            ].map((facility) => (
+                              <div
+                                key={facility}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={facility}
+                                  checked={formData.sharedFacilities.includes(
+                                    facility,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleFacility(facility)
+                                  }
+                                />
+                                <label
+                                  htmlFor={facility}
+                                  className="text-sm cursor-pointer"
+                                >
+                                  {facility}
+                                </label>
                               </div>
-                            )}
+                            ))}
+                            {formData.sharedFacilities
+                              .filter(
+                                (f) =>
+                                  ![
+                                    "Pool",
+                                    "Gym",
+                                    "Parking",
+                                    "Security",
+                                    "Private Beach",
+                                    "Spa",
+                                    "Retail",
+                                    "Meeting Rooms",
+                                    "Elevators",
+                                  ].includes(f),
+                              )
+                              .map((customF) => (
+                                <div
+                                  key={customF}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={customF}
+                                    checked
+                                    onCheckedChange={() =>
+                                      toggleFacility(customF)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={customF}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {customF}
+                                  </label>
+                                </div>
+                              ))}
                           </div>
+                          <div className="flex gap-2 mt-3">
+                            <Input
+                              value={customFacilityInput}
+                              onChange={(e) =>
+                                setCustomFacilityInput(e.target.value)
+                              }
+                              placeholder="Add custom facility"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (customFacilityInput.trim()) {
+                                  toggleFacility(customFacilityInput.trim());
+                                  setCustomFacilityInput("");
+                                }
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">
+                              Facility Management Included
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Is professional facility management included?
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.facilityManagement}
+                            onCheckedChange={(val) =>
+                              updateFormData("facilityManagement", val)
+                            }
+                          />
                         </div>
                       </div>
                     )}
 
-                    {/* STEP 3: INVESTMENT RETURNS & RISK ASSESSMENT */}
+                    {/* Step 3: Investment Structure */}
                     {currentStep === 3 && (
-                      <div className="space-y-6">
-                        <div className="flex items-center justify-between border-b pb-2">
-                          <Label className="text-base font-semibold">
-                            Investment Returns & Risk ({formData.developmentStage})
-                          </Label>
-                          <Badge
-                            className={
-                              formData.developmentStage === "Before Development"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-emerald-100 text-emerald-800"
-                            }
-                          >
-                            {formData.developmentStage}
-                          </Badge>
-                        </div>
-
-                        {formData.developmentStage === "Before Development" ? (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Label>Target Pre-funding Goal (₦)</Label>
-                                <Input
-                                  type="number"
-                                  value={formData.targetFunding}
-                                  onChange={(e) => updateFormData("targetFunding", e.target.value)}
-                                  placeholder="e.g. 5000000000"
-                                />
-                              </div>
-                              <div>
-                                <Label>Minimum Investment Amount (₦)</Label>
-                                <Input
-                                  type="number"
-                                  value={formData.minimumInvestment}
-                                  onChange={(e) => updateFormData("minimumInvestment", e.target.value)}
-                                  placeholder="e.g. 5000000"
-                                />
-                              </div>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Ownership Options *</Label>
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            <div
+                              onClick={() =>
+                                updateFormData("ownershipType", "Full")
+                              }
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                formData.ownershipType === "Full"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-muted-foreground"
+                              }`}
+                            >
+                              <h4 className="font-medium">Full Ownership</h4>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Single owner purchases entire asset
+                              </p>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <Label>Projected Rental Yield (%)</Label>
-                                <Input
-                                  value={formData.rentalYieldMax}
-                                  onChange={(e) => updateFormData("rentalYieldMax", e.target.value)}
-                                  placeholder="e.g. 9.5"
-                                />
-                              </div>
-                              <div>
-                                <Label>Projected Appreciation (%)</Label>
-                                <Input
-                                  value={formData.capitalAppreciationMax}
-                                  onChange={(e) => updateFormData("capitalAppreciationMax", e.target.value)}
-                                  placeholder="e.g. 18.0"
-                                />
-                              </div>
-                              <div>
-                                <Label>Projected Total ROI (%)</Label>
-                                <Input
-                                  value={formData.totalReturnsMax}
-                                  onChange={(e) => updateFormData("totalReturnsMax", e.target.value)}
-                                  placeholder="e.g. 27.5"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Label>Construction Progress (%)</Label>
-                                <Input
-                                  type="number"
-                                  value={formData.constructionProgress}
-                                  onChange={(e) => updateFormData("constructionProgress", e.target.value)}
-                                  placeholder="25"
-                                />
-                              </div>
-                              <div>
-                                <Label>Expected First Dividend / Return Date</Label>
-                                <Input
-                                  type="date"
-                                  value={formData.firstPayoutDate}
-                                  onChange={(e) => updateFormData("firstPayoutDate", e.target.value)}
-                                />
-                              </div>
+                            <div
+                              onClick={() =>
+                                updateFormData("ownershipType", "Fractional")
+                              }
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                formData.ownershipType === "Fractional"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-muted-foreground"
+                              }`}
+                            >
+                              <h4 className="font-medium">
+                                Fractional Ownership
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Multiple investors own fractions
+                              </p>
                             </div>
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Label>Projected Annual Rental Income (₦)</Label>
-                                <Input
-                                  type="number"
-                                  value={formData.projectedRentalIncome}
-                                  onChange={(e) => updateFormData("projectedRentalIncome", e.target.value)}
-                                  placeholder="e.g. 680000000"
-                                />
-                              </div>
-                              <div>
-                                <Label>Rental Payout Frequency</Label>
-                                <Select
-                                  value={formData.rentalFrequency}
-                                  onValueChange={(val) => updateFormData("rentalFrequency", val)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Monthly">Monthly</SelectItem>
-                                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                                    <SelectItem value="Annual">Annual</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                        </div>
+
+                        {formData.ownershipType === "Fractional" && (
+                          <>
+                            <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                              <h4 className="text-sm font-medium text-accent mb-3">
+                                Fraction Breakdown
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                {formData.type === "Land" ? (
+                                  <>
+                                    <div>
+                                      <Label htmlFor="landUnitType">
+                                        Land Units *
+                                      </Label>
+                                      <Select
+                                        id="landUnitType"
+                                        value={formData.landUnitType || ""}
+                                        onValueChange={(val) =>
+                                          updateFormData("landUnitType", val)
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="sqm">
+                                            Per Square Meter
+                                          </SelectItem>
+                                          <SelectItem value="plot">
+                                            Per Plot
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="landUnitCount">
+                                        Number of Units *
+                                      </Label>
+                                      <Input
+                                        id="landUnitCount"
+                                        type="number"
+                                        value={formData.landUnitCount || ""}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "landUnitCount",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="e.g. 10"
+                                      />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <Label htmlFor="fractionTotal">
+                                        Total Fractions *
+                                      </Label>
+                                      <Input
+                                        id="fractionTotal"
+                                        type="number"
+                                        value={formData.fractionTotal}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "fractionTotal",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="100"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="costPerFraction">
+                                        Cost per Fraction (₦) *
+                                      </Label>
+                                      <Input
+                                        id="costPerFraction"
+                                        type="number"
+                                        value={formData.costPerFraction}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "costPerFraction",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="8500"
+                                      />
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <Label>Actual Rental Yield (%)</Label>
-                                <Input
-                                  value={formData.rentalYieldMax}
-                                  onChange={(e) => updateFormData("rentalYieldMax", e.target.value)}
-                                  placeholder="e.g. 8.5"
-                                />
+                            <div className="p-4 bg-muted rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">
+                                  Funding Progress
+                                </span>
+                                <span className="text-sm font-semibold">
+                                  {fundingProgress}%
+                                </span>
                               </div>
-                              <div>
-                                <Label>Annual Capital Appreciation (%)</Label>
-                                <Input
-                                  value={formData.capitalAppreciation}
-                                  onChange={(e) => updateFormData("capitalAppreciation", e.target.value)}
-                                  placeholder="e.g. 12.0"
-                                />
-                              </div>
-                              <div>
-                                <Label>Net Cashflow Returns (%)</Label>
-                                <Input
-                                  value={formData.totalReturnsMax}
-                                  onChange={(e) => updateFormData("totalReturnsMax", e.target.value)}
-                                  placeholder="e.g. 20.5"
-                                />
+                              <Progress
+                                value={fundingProgress}
+                                className="h-2"
+                              />
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Auto-calculated based on fraction sales
+                              </p>
+                            </div>
+                          </>
+                        )}
+
+                        {formData.ownershipType === "Full" && (
+                          <div className="p-4 bg-muted rounded-lg text-center">
+                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              Full ownership selected. Asset will be sold as a
+                              single unit.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 4: Pricing & Payment Logic */}
+                    {currentStep === 4 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="basePrice">
+                              Base Asset Value (₦) *
+                            </Label>
+                            <Input
+                              id="basePrice"
+                              type="number"
+                              value={formData.basePrice}
+                              onChange={(e) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  basePrice: e.target.value,
+                                  markup: "",
+                                }));
+                                setMarkupPct("");
+                                setCustomPctInput("");
+                                setCustomPctInput("");
+                              }}
+                              placeholder="1200000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="markup">BuyOps Markup *</Label>
+                            <div className="space-y-2">
+                              <Select
+                                value={markupPct}
+                                onValueChange={handleMarkupPctChange}
+                              >
+                                <SelectTrigger id="markup">
+                                  <SelectValue placeholder="Select markup %" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "1",
+                                    "2",
+                                    "3",
+                                    "5",
+                                    "7",
+                                    "10",
+                                    "15",
+                                    "20",
+                                  ].map((pct) => (
+                                    <SelectItem key={pct} value={pct}>
+                                      {pct}%
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="CUSTOM">
+                                    Custom %
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {markupPct === "CUSTOM" ? (
+                                <div className="space-y-1">
+                                  <div className="relative">
+                                    <Input
+                                      type="number"
+                                      value={customPctInput}
+                                      onChange={(e) =>
+                                        handleCustomPctChange(e.target.value)
+                                      }
+                                      placeholder="Enter custom %"
+                                      className="pr-8"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                      %
+                                    </span>
+                                  </div>
+                                  {formData.markup && (
+                                    <p className="text-sm text-muted-foreground">
+                                      = ₦
+                                      {Number(formData.markup).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                formData.markup && (
+                                  <p className="text-sm text-muted-foreground">
+                                    = ₦
+                                    {Number(formData.markup).toLocaleString()}
+                                  </p>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <div className="text-sm text-muted-foreground">
+                            Final Selling Price
+                          </div>
+                          <div className="text-3xl font-semibold text-accent mt-1">
+                            ₦{finalPrice.toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">
+                            Payment Options *
+                          </Label>
+                          <div className="space-y-2">
+                            {["Full", "Installment", "Stage-based"].map(
+                              (option) => (
+                                <div
+                                  key={option}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={option}
+                                    checked={formData.paymentOptions.includes(
+                                      option,
+                                    )}
+                                    onCheckedChange={() =>
+                                      togglePaymentOption(option)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={option}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {option} Payment
+                                  </label>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Installment Configuration - shown only if Installment is selected */}
+                        {formData.paymentOptions.includes("Installment") && (
+                          <div className="p-4 bg-muted rounded-lg space-y-4">
+                            <h4 className="text-sm font-medium">
+                              Installment Configuration
+                            </h4>
+
+                            <div>
+                              <Label htmlFor="downPaymentAmount">
+                                Down Payment Amount (₦) *
+                              </Label>
+                              <Input
+                                id="downPaymentAmount"
+                                type="number"
+                                value={formData.downPaymentAmount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "downPaymentAmount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="5000000"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Minimum initial payment required
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-3 block">
+                                Allowed Payment Periods *
+                              </Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  "3 months",
+                                  "6 months",
+                                  "12 months",
+                                  "18 months",
+                                  "24 months",
+                                  "36 months",
+                                ].map((period) => (
+                                  <div
+                                    key={period}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <Checkbox
+                                      id={period}
+                                      checked={formData.installmentPeriods.includes(
+                                        period,
+                                      )}
+                                      onCheckedChange={() =>
+                                        toggleInstallmentPeriod(period)
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={period}
+                                      className="text-sm cursor-pointer"
+                                    >
+                                      {period}
+                                    </label>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Risk Factors */}
-                        <div className="space-y-3 border-t pt-4">
-                          <Label className="text-sm font-semibold">Risk Classification</Label>
-                          <div className="grid grid-cols-3 gap-4">
-                            {["Low", "Medium", "High"].map((level) => (
-                              <button
-                                key={level}
-                                type="button"
-                                onClick={() => updateFormData("riskLevel", level)}
-                                className={`p-3 text-center border rounded-lg text-sm font-medium transition-all ${
-                                  formData.riskLevel === level
-                                    ? level === "Low"
-                                      ? "bg-emerald-500 text-white border-emerald-600"
-                                      : level === "Medium"
-                                        ? "bg-amber-500 text-white border-amber-600"
-                                        : "bg-red-500 text-white border-red-600"
-                                    : "bg-background border-border text-foreground hover:bg-muted"
-                                }`}
-                              >
-                                {level} Risk
-                              </button>
-                            ))}
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h4 className="text-sm font-medium mb-3">
+                            Discount Configuration
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="offPlanDiscount">
+                                Off-plan Discount (%)
+                              </Label>
+                              <Input
+                                id="offPlanDiscount"
+                                type="number"
+                                step="0.1"
+                                value={formData.offPlanDiscount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "offPlanDiscount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="stageBasedDiscount">
+                                Stage-based Discount (%)
+                              </Label>
+                              <Input
+                                id="stageBasedDiscount"
+                                type="number"
+                                step="0.1"
+                                value={formData.stageBasedDiscount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "stageBasedDiscount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-blue-900 dark:text-blue-100">
+                            <strong>Payment Security:</strong> All payments are
+                            processed through escrow accounts with full investor
+                            protection and transparent transaction tracking.
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* STEP 4: MEDIA, DOCUMENTS & REVIEW */}
-                    {currentStep === 4 && (
-                      <div className="space-y-6">
-                        {/* Media Upload */}
-                        <div className="space-y-4">
-                          <Label className="text-base font-semibold block border-b pb-2">
-                            1. Media & Documentation
+                    {/* Step 5: Returns & Projections */}
+                    {currentStep === 5 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="projectedRentalIncome">
+                              Projected Rental Income (₦) *
+                            </Label>
+                            <Input
+                              id="projectedRentalIncome"
+                              type="number"
+                              value={formData.projectedRentalIncome}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "projectedRentalIncome",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="75000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="rentalFrequency">
+                              Rental Frequency *
+                            </Label>
+                            <Select
+                              value={formData.rentalFrequency}
+                              onValueChange={(val) =>
+                                updateFormData("rentalFrequency", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Monthly">Monthly</SelectItem>
+                                <SelectItem value="Quarterly">
+                                  Quarterly
+                                </SelectItem>
+                                <SelectItem value="Annual">Annual</SelectItem>
+                                <SelectItem value="N/A">N/A</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="operatingCost">
+                            Operating Cost Assumptions (₦/year) *
                           </Label>
+                          <Input
+                            id="operatingCost"
+                            type="number"
+                            value={formData.operatingCost}
+                            onChange={(e) =>
+                              updateFormData("operatingCost", e.target.value)
+                            }
+                            placeholder="15000"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Include maintenance, management fees, and utilities
+                          </p>
+                        </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div
-                              onClick={() => imageInputRef.current?.click()}
-                              className="p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all text-center"
-                            >
-                              <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                              <span className="text-sm font-medium">Upload Asset Images</span>
-                              <span className="text-xs text-muted-foreground mt-1">
-                                {uploadedImages.length} file(s) selected
-                              </span>
-                              <input
-                                ref={imageInputRef}
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleImageUpload}
-                              />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="capitalAppreciation">
+                              Capital Appreciation (% p.a.) *
+                            </Label>
+                            <Input
+                              id="capitalAppreciation"
+                              type="number"
+                              step="0.1"
+                              value={formData.capitalAppreciation}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "capitalAppreciation",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="8.0"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="firstPayoutDate">
+                              First Payout Date
+                            </Label>
+                            <Input
+                              id="firstPayoutDate"
+                              type="date"
+                              value={formData.firstPayoutDate}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "firstPayoutDate",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg space-y-3">
+                          <h4 className="text-sm font-medium text-accent">
+                            Calculated Returns
+                          </h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Rental Yield
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {rentalYield}%
+                              </div>
                             </div>
-
-                            <div
-                              onClick={() => documentInputRef.current?.click()}
-                              className="p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-all text-center"
-                            >
-                              <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                              <span className="text-sm font-medium">Upload Project Documents</span>
-                              <span className="text-xs text-muted-foreground mt-1">
-                                {uploadedDocuments.length} document(s) selected
-                              </span>
-                              <input
-                                ref={documentInputRef}
-                                type="file"
-                                multiple
-                                accept=".pdf,.doc,.docx"
-                                className="hidden"
-                                onChange={handleDocumentUpload}
-                              />
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Capital Growth
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {formData.capitalAppreciation || 0}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Total Annual Return
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {totalAnnualReturn}%
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Commissions */}
-                        <div className="space-y-4 border-t pt-4">
-                          <Label className="text-base font-semibold block border-b pb-2">
-                            2. Agent Commission Splits
-                          </Label>
-                          <div className="grid grid-cols-2 gap-4">
+                        {/* Investment Returns Ranges */}
+                        <div className="p-4 bg-muted rounded-lg space-y-4">
+                          <h4 className="text-sm font-medium">
+                            Projected Investment Returns (Range)
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Define the expected range of returns for investor
+                            transparency
+                          </p>
+
+                          <div className="space-y-4">
                             <div>
-                              <Label>Lead Agent Commission (%)</Label>
+                              <Label className="mb-2 block">
+                                Rental Yield Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.rentalYieldMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "rentalYieldMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 8)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.rentalYieldMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "rentalYieldMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 10)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Annual rental income as percentage of property
+                                value
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-2 block">
+                                Capital Appreciation Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.capitalAppreciationMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "capitalAppreciationMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 15)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.capitalAppreciationMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "capitalAppreciationMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 20)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Expected property value growth per annum
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-2 block">
+                                Total Returns Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.totalReturnsMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "totalReturnsMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 23)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.totalReturnsMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "totalReturnsMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 30)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Combined annual returns (rental + appreciation)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 6: Risk & Transparency */}
+                    {currentStep === 6 && (
+                      <div className="space-y-4">
+                        {/* Construction Progress - shown only for ongoing construction, not for Land type */}
+                        {formData.type !== "Land" &&
+                          formData.projectStatus &&
+                          formData.projectStatus !== "Completed" &&
+                          formData.projectStatus !== "Available" && (
+                            <div>
+                              <Label htmlFor="constructionProgress">
+                                Construction Progress (%)
+                              </Label>
                               <Input
-                                value={formData.leadCommission}
-                                onChange={(e) => updateFormData("leadCommission", e.target.value)}
-                                placeholder="2.5"
+                                id="constructionProgress"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={formData.constructionProgress}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "constructionProgress",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="70"
                               />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Current completion percentage of the project
+                              </p>
+                            </div>
+                          )}
+
+                        <div>
+                          <Label>Risk Level *</Label>
+                          <div className="grid grid-cols-3 gap-3 mt-2">
+                            {["Low", "Medium", "High"].map((level) => (
+                              <div
+                                key={level}
+                                onClick={() =>
+                                  updateFormData("riskLevel", level)
+                                }
+                                className={`p-3 border-2 rounded-lg cursor-pointer text-center transition-all ${
+                                  formData.riskLevel === level
+                                    ? level === "Low"
+                                      ? "border-accent bg-accent/10 text-accent"
+                                      : level === "Medium"
+                                        ? "border-warning bg-warning/10 text-warning"
+                                        : "border-destructive bg-destructive/10 text-destructive"
+                                    : "border-border hover:border-muted-foreground"
+                                }`}
+                              >
+                                <div className="font-medium">{level}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Risk Factors */}
+                        <div className="p-4 bg-muted rounded-lg space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">
+                              Investment Risk Factors
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Select applicable risk factors for investor
+                              transparency
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            {[
+                              "Construction timeline risk (if applicable)",
+                              "Market volatility in property sector",
+                              "Rental income may vary based on occupancy",
+                              "Regulatory and economic factors",
+                              "Currency fluctuation risk",
+                              "Developer financial stability",
+                            ].map((factor) => (
+                              <div
+                                key={factor}
+                                className="flex items-start space-x-2"
+                              >
+                                <Checkbox
+                                  id={factor}
+                                  checked={formData.riskFactors.includes(
+                                    factor,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleRiskFactor(factor)
+                                  }
+                                />
+                                <label
+                                  htmlFor={factor}
+                                  className="text-sm cursor-pointer leading-tight"
+                                >
+                                  {factor}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Custom Risk Factor */}
+                          <div>
+                            <Label
+                              htmlFor="customRiskFactor"
+                              className="text-xs"
+                            >
+                              Add Custom Risk Factor
+                            </Label>
+                            <div className="flex gap-2 mt-1">
+                              <Input
+                                id="customRiskFactor"
+                                value={formData.customRiskFactor}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "customRiskFactor",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Enter custom risk factor"
+                                className="text-sm"
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addCustomRiskFactor();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addCustomRiskFactor}
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Display selected custom risk factors */}
+                          {formData.riskFactors.filter(
+                            (f) =>
+                              ![
+                                "Construction timeline risk (if applicable)",
+                                "Market volatility in property sector",
+                                "Rental income may vary based on occupancy",
+                                "Regulatory and economic factors",
+                                "Currency fluctuation risk",
+                                "Developer financial stability",
+                              ].includes(f),
+                          ).length > 0 && (
+                            <div>
+                              <Label className="text-xs mb-2 block">
+                                Custom Risk Factors:
+                              </Label>
+                              <div className="space-y-2">
+                                {formData.riskFactors
+                                  .filter(
+                                    (f) =>
+                                      ![
+                                        "Construction timeline risk (if applicable)",
+                                        "Market volatility in property sector",
+                                        "Rental income may vary based on occupancy",
+                                        "Regulatory and economic factors",
+                                        "Currency fluctuation risk",
+                                        "Developer financial stability",
+                                      ].includes(f),
+                                  )
+                                  .map((factor) => (
+                                    <div
+                                      key={factor}
+                                      className="flex items-center justify-between p-2 bg-background rounded border text-sm"
+                                    >
+                                      <span>{factor}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeRiskFactor(factor)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {formData.type === "Off Plan" && (
+                          <div>
+                            <Label htmlFor="offPlanSecurity">
+                              Off-plan Security Notes
+                            </Label>
+                            <Textarea
+                              id="offPlanSecurity"
+                              value={formData.offPlanSecurity}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "offPlanSecurity",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="e.g., Developer escrow account + Bank guarantee"
+                              rows={3}
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <Label htmlFor="exitLiquidity">
+                            Exit Liquidity Settings *
+                          </Label>
+                          <Select
+                            value={formData.exitLiquidity}
+                            onValueChange={(val) =>
+                              updateFormData("exitLiquidity", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="High">
+                                High - Can exit within 30 days
+                              </SelectItem>
+                              <SelectItem value="Medium">
+                                Medium - Exit within 60-90 days
+                              </SelectItem>
+                              <SelectItem value="Low">
+                                Low - Exit after 6+ months
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="managementMode">
+                            Management Mode *
+                          </Label>
+                          <Select
+                            value={formData.managementMode}
+                            onValueChange={(val) =>
+                              updateFormData("managementMode", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BuyOps-managed">
+                                BuyOps-managed
+                              </SelectItem>
+                              <SelectItem value="Self-managed">
+                                Self-managed
+                              </SelectItem>
+                              <SelectItem value="Third-party managed">
+                                Third-party managed
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <CircleAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-amber-900 dark:text-amber-100">
+                            <strong>Transparency Notice:</strong> All risk
+                            factors, construction progress, and financial
+                            projections are regularly updated and verified by
+                            independent auditors.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 7: Media & Documentation */}
+                    {currentStep === 7 && (
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Upload Images</h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            High-quality photos of the property
+                          </p>
+                          <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => imageInputRef.current?.click()}
+                          >
+                            Choose Files
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.images > 0
+                              ? `${formData.images} images uploaded`
+                              : "No images uploaded yet"}
+                          </p>
+                          {uploadedImages.length > 0 && (
+                            <div className="mt-4 space-y-2 text-left">
+                              {uploadedImages.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                                >
+                                  <span className="truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeImage(index)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Upload Documents</h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Legal documents, floor plans, certificates
+                          </p>
+                          <input
+                            ref={documentInputRef}
+                            type="file"
+                            accept=".pdf,.doc,.docx,.txt"
+                            multiple
+                            onChange={handleDocumentUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => documentInputRef.current?.click()}
+                          >
+                            Choose Files
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.documents > 0
+                              ? `${formData.documents} documents uploaded`
+                              : "No documents uploaded yet"}
+                          </p>
+                          {uploadedDocuments.length > 0 && (
+                            <div className="mt-4 space-y-2 text-left">
+                              {uploadedDocuments.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                                >
+                                  <span className="truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeDocument(index)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">
+                            Virtual Tour Links
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Add 360° virtual tours or video walkthroughs
+                          </p>
+                          <Input
+                            placeholder="https://..."
+                            className="mt-2 max-w-md mx-auto"
+                          />
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.virtualTours > 0
+                              ? `${formData.virtualTours} tours added`
+                              : "No virtual tours added yet"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 8: Commission Setup */}
+                    {currentStep === 8 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h4 className="font-medium mb-1">
+                            Commission Structure
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Set commission percentages for agents involved in
+                            the sale
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="leadCommission">
+                              Lead Commission (%) *
+                            </Label>
+                            <Input
+                              id="leadCommission"
+                              type="number"
+                              step="0.1"
+                              value={formData.leadCommission}
+                              onChange={(e) =>
+                                updateFormData("leadCommission", e.target.value)
+                              }
+                              placeholder="1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="closerCommission">
+                              Deal Closer Commission (%) *
+                            </Label>
+                            <Input
+                              id="closerCommission"
+                              type="number"
+                              step="0.1"
+                              value={formData.closerCommission}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "closerCommission",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="1.5"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Total Commission
+                              </div>
+                              <div className="text-2xl font-semibold text-accent">
+                                {totalCommission.toFixed(1)}%
+                              </div>
                             </div>
                             <div>
-                              <Label>Closer Agent Commission (%)</Label>
-                              <Input
-                                value={formData.closerCommission}
-                                onChange={(e) => updateFormData("closerCommission", e.target.value)}
-                                placeholder="1.5"
-                              />
+                              <div className="text-xs text-muted-foreground">
+                                Commission per Sale
+                              </div>
+                              <div className="text-2xl font-semibold text-accent">
+                                ₦
+                                {(
+                                  (finalPrice * totalCommission) /
+                                  100
+                                ).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Based on final selling price of ₦
+                            {finalPrice.toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-muted rounded">
+                            <span className="text-sm">Lead Agent Earns:</span>
+                            <span className="font-semibold">
+                              ₦
+                              {(
+                                (finalPrice *
+                                  (parseFloat(formData.leadCommission) || 0)) /
+                                100
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-muted rounded">
+                            <span className="text-sm">Closer Agent Earns:</span>
+                            <span className="font-semibold">
+                              ₦
+                              {(
+                                (finalPrice *
+                                  (parseFloat(formData.closerCommission) ||
+                                    0)) /
+                                100
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 9: Review & Publish */}
+                    {currentStep === 9 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h3 className="font-semibold text-lg mb-4">
+                            Asset Summary
+                          </h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Asset Name:
+                              </span>
+                              <span className="font-medium text-right">
+                                {formData.name || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Reference Code:
+                              </span>
+                              <span className="font-medium">
+                                {formData.referenceCode || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Type:
+                              </span>
+                              <Badge variant="outline">
+                                {formData.type.toUpperCase() || "—"}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Location:
+                              </span>
+                              <span className="font-medium text-right">
+                                {formData.location || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Property Category:
+                              </span>
+                              <span className="font-medium">
+                                {formData.propertyCategory || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Total Units:
+                              </span>
+                              <span className="font-medium">
+                                {formData.totalUnits || "—"}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Review Card */}
-                        <div className="p-4 bg-muted/40 rounded-xl border space-y-3">
-                          <h4 className="font-semibold text-sm">Asset Review Summary</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                            <div>
-                              <span className="text-muted-foreground">Title:</span>
-                              <div className="font-semibold">{formData.name || "—"}</div>
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <h4 className="font-medium text-accent mb-3">
+                            Financial Summary
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                Final Selling Price:
+                              </span>
+                              <span className="font-semibold">
+                                ₦{finalPrice.toLocaleString()}
+                              </span>
                             </div>
-                            <div>
-                              <span className="text-muted-foreground">Stage:</span>
-                              <div className="font-semibold text-amber-600">{formData.developmentStage}</div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Ownership Type:</span>
+                              <span className="font-medium">
+                                {formData.ownershipType}
+                              </span>
                             </div>
-                            <div>
-                              <span className="text-muted-foreground">Application:</span>
-                              <div className="font-semibold text-blue-600">{formData.platform}</div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                Total Annual Return:
+                              </span>
+                              <span className="font-semibold text-accent">
+                                {totalAnnualReturn}%
+                              </span>
                             </div>
-                            <div>
-                              <span className="text-muted-foreground">Total Price:</span>
-                              <div className="font-semibold">₦{computedFinal.toLocaleString()}</div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Total Commission:</span>
+                              <span className="font-semibold">
+                                {totalCommission.toFixed(1)}%
+                              </span>
                             </div>
+                          </div>
+                        </div>
+
+                        {/* Investment Returns Summary */}
+                        {(formData.rentalYieldMin ||
+                          formData.rentalYieldMax ||
+                          formData.capitalAppreciationMin ||
+                          formData.capitalAppreciationMax ||
+                          formData.totalReturnsMin ||
+                          formData.totalReturnsMax) && (
+                          <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                            <h4 className="font-medium text-accent mb-3">
+                              Investment Returns (Projected Ranges)
+                            </h4>
+                            <div className="space-y-2">
+                              {(formData.rentalYieldMin ||
+                                formData.rentalYieldMax) && (
+                                <div className="flex justify-between">
+                                  <span className="text-sm">Rental Yield:</span>
+                                  <span className="font-semibold">
+                                    {formData.rentalYieldMin || "—"}-
+                                    {formData.rentalYieldMax || "—"}%
+                                  </span>
+                                </div>
+                              )}
+                              {(formData.capitalAppreciationMin ||
+                                formData.capitalAppreciationMax) && (
+                                <div className="flex justify-between">
+                                  <span className="text-sm">
+                                    Capital Appreciation:
+                                  </span>
+                                  <span className="font-semibold">
+                                    {formData.capitalAppreciationMin || "—"}-
+                                    {formData.capitalAppreciationMax || "—"}%
+                                  </span>
+                                </div>
+                              )}
+                              {(formData.totalReturnsMin ||
+                                formData.totalReturnsMax) && (
+                                <div className="flex justify-between">
+                                  <span className="text-sm">
+                                    Total Returns:
+                                  </span>
+                                  <span className="font-semibold text-accent">
+                                    {formData.totalReturnsMin || "—"}-
+                                    {formData.totalReturnsMax || "—"}%
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h4 className="font-medium mb-3">
+                            Risk & Management
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm">Project Status:</span>
+                              <span className="font-medium">
+                                {formData.projectStatus || "—"}
+                                {formData.type !== "Land" &&
+                                  formData.constructionProgress &&
+                                  formData.projectStatus !== "Completed" &&
+                                  formData.projectStatus !== "Available" &&
+                                  ` (${formData.constructionProgress}% complete)`}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Risk Level:</span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  formData.riskLevel === "Low"
+                                    ? "border-accent text-accent"
+                                    : formData.riskLevel === "Medium"
+                                      ? "border-warning text-warning"
+                                      : "border-destructive text-destructive"
+                                }
+                              >
+                                {formData.riskLevel}
+                              </Badge>
+                            </div>
+                            {formData.riskFactors.length > 0 && (
+                              <div>
+                                <span className="text-sm text-muted-foreground block mb-1">
+                                  Risk Factors:
+                                </span>
+                                <ul className="text-sm space-y-1 ml-4">
+                                  {formData.riskFactors
+                                    .slice(0, 3)
+                                    .map((factor, idx) => (
+                                      <li key={idx} className="list-disc">
+                                        {factor}
+                                      </li>
+                                    ))}
+                                  {formData.riskFactors.length > 3 && (
+                                    <li className="text-muted-foreground">
+                                      +{formData.riskFactors.length - 3} more
+                                    </li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-sm">Exit Liquidity:</span>
+                              <span className="font-medium">
+                                {formData.exitLiquidity}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Management:</span>
+                              <span className="font-medium">
+                                {formData.managementMode}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">
+                              Publish Status
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Toggle to publish asset immediately
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.status === "published"}
+                            onCheckedChange={(val) =>
+                              updateFormData(
+                                "status",
+                                val ? "published" : "draft",
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <CircleCheck className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-green-900 dark:text-green-100">
+                            Review all details carefully before publishing. You
+                            can always edit or unpublish the asset later.
                           </div>
                         </div>
                       </div>
@@ -1629,97 +3069,1894 @@ export function AssetManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Asset Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Asset</DialogTitle>
-            <DialogDescription>Update details for {formData.name}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2 text-sm">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Development Stage</Label>
-                <Select
-                  value={formData.developmentStage}
-                  onValueChange={(val) => updateFormData("developmentStage", val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Before Development">Before Development</SelectItem>
-                    <SelectItem value="After Development">After Development</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Edit Asset Dialog - Reuses same form structure */}
+              <Dialog
+                open={editDialogOpen}
+                onOpenChange={(open) => {
+                  setEditDialogOpen(open);
+                  if (!open) {
+                    setFormData(INITIAL_FORM_DATA);
+                    setCurrentStep(1);
+                    setMarkupPct("");
+                    setCustomPctInput("");
+                    setError(null);
+                  }
+                }}
+              >
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>Edit Asset</DialogTitle>
+                    <DialogDescription>
+                      Step {currentStep} of {totalSteps}:{" "}
+                      {currentStep === 1
+                        ? "Asset Identity & Status"
+                        : currentStep === 2
+                          ? "Physical Details & Facilities"
+                          : currentStep === 3
+                            ? "Investment Structure"
+                            : currentStep === 4
+                              ? "Pricing Logic"
+                              : currentStep === 5
+                                ? "Returns Projections"
+                                : currentStep === 6
+                                  ? "Risk & Management Assessment"
+                                  : currentStep === 7
+                                    ? "Media & Documentation"
+                                    : currentStep === 8
+                                      ? "Commission Setup"
+                                      : "Review & Publish"}
+                    </DialogDescription>
+                  </DialogHeader>
 
-              <div>
-                <Label>Application</Label>
-                <Select
-                  value={formData.platform}
-                  onValueChange={(val) => updateFormData("platform", val)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Urbco Foundry">Urbco Foundry</SelectItem>
-                    <SelectItem value="Urbco Harbor">Urbco Harbor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                  {/* Use the same form steps - content is identical to create dialog */}
+                  <div className="flex-1 overflow-y-auto px-6 py-4">
+                    {/* The form fields below are populated with existing asset data through formData state */}
+                    {/* All form steps from create dialog are rendered here with the same formData binding */}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Asset Name</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => updateFormData("name", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-location">Location</Label>
-                <Input
-                  id="edit-location"
-                  value={formData.location}
-                  onChange={(e) => updateFormData("location", e.target.value)}
-                />
-              </div>
-            </div>
+                    {/* Step 1: Asset Identity & Status */}
+                    {currentStep === 1 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-name">Asset Name *</Label>
+                            <Input
+                              id="edit-name"
+                              value={formData.name}
+                              onChange={(e) =>
+                                updateFormData("name", e.target.value)
+                              }
+                              placeholder="e.g., Marina Heights Tower A"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-referenceCode">
+                              Asset Reference Code *
+                            </Label>
+                            <Input
+                              id="edit-referenceCode"
+                              value={formData.referenceCode}
+                              onChange={(e) =>
+                                updateFormData("referenceCode", e.target.value)
+                              }
+                              placeholder="e.g., MHT-A-2024"
+                            />
+                          </div>
+                        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit-base-price">Base Price / Valuation (₦)</Label>
-                <Input
-                  id="edit-base-price"
-                  type="number"
-                  value={formData.basePrice}
-                  onChange={(e) => updateFormData("basePrice", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-markup">Markup (₦)</Label>
-                <Input
-                  id="edit-markup"
-                  type="number"
-                  value={formData.markup}
-                  onChange={(e) => updateFormData("markup", e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdate} disabled={loading}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-type">Asset Type *</Label>
+                            <Select
+                              value={formData.type}
+                              onValueChange={(val) =>
+                                updateFormData("type", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Land">Land</SelectItem>
+                                <SelectItem value="Off Plan">
+                                  Off Plan
+                                </SelectItem>
+                                <SelectItem value="Under Construction">
+                                  Under Construction
+                                </SelectItem>
+                                <SelectItem value="Completed">
+                                  Completed
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-projectStatus">
+                              Project Status *
+                            </Label>
+                            <Select
+                              value={formData.projectStatus}
+                              onValueChange={(val) =>
+                                updateFormData("projectStatus", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Planning">
+                                  Planning
+                                </SelectItem>
+                                <SelectItem value="Foundation">
+                                  Foundation
+                                </SelectItem>
+                                <SelectItem value="Under Construction">
+                                  Under Construction
+                                </SelectItem>
+                                <SelectItem value="Completed">
+                                  Completed
+                                </SelectItem>
+                                <SelectItem value="Available">
+                                  Available
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-location">Location *</Label>
+                          <Input
+                            id="edit-location"
+                            value={formData.location}
+                            onChange={(e) =>
+                              updateFormData("location", e.target.value)
+                            }
+                            placeholder="e.g., Dubai Marina"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-address">Full Address *</Label>
+                          <Textarea
+                            id="edit-address"
+                            value={formData.address}
+                            onChange={(e) =>
+                              updateFormData("address", e.target.value)
+                            }
+                            placeholder="Enter complete address with plot/unit details"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-company">Company *</Label>
+                          <Select
+                            value={formData.company}
+                            onValueChange={(val) =>
+                              updateFormData("company", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select company" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                  {company.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-landSize">
+                              Land Size (sqm)
+                            </Label>
+                            <Input
+                              id="edit-landSize"
+                              type="number"
+                              value={formData.landSize}
+                              onChange={(e) =>
+                                updateFormData("landSize", e.target.value)
+                              }
+                              placeholder="5000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-builtSize">
+                              Built-up Size (sqm)
+                            </Label>
+                            <Input
+                              id="edit-builtSize"
+                              type="number"
+                              value={formData.builtSize}
+                              onChange={(e) =>
+                                updateFormData("builtSize", e.target.value)
+                              }
+                              placeholder="45000"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Show construction dates only if not Land or Completed */}
+                        {formData.type !== "Land" &&
+                          formData.type !== "Completed" && (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="edit-constructionStart">
+                                  Construction Start Date
+                                </Label>
+                                <Input
+                                  id="edit-constructionStart"
+                                  type="date"
+                                  value={formData.constructionStart}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "constructionStart",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-constructionEnd">
+                                  Expected Completion Date
+                                </Label>
+                                <Input
+                                  id="edit-constructionEnd"
+                                  type="date"
+                                  value={formData.constructionEnd}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "constructionEnd",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                    )}
+
+                    {/* Step 2: Physical & Functional Details */}
+                    {currentStep === 2 && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="edit-propertyCategory">
+                            Property Category *
+                          </Label>
+                          <Select
+                            value={formData.propertyCategory}
+                            onValueChange={(val) =>
+                              updateFormData("propertyCategory", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Residential">
+                                Residential
+                              </SelectItem>
+                              <SelectItem value="Commercial">
+                                Commercial
+                              </SelectItem>
+                              <SelectItem value="Mixed-use">
+                                Mixed-use
+                              </SelectItem>
+                              <SelectItem value="Land">Land</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="edit-totalUnits">
+                              Total Units / Rooms *
+                            </Label>
+                            <Input
+                              id="edit-totalUnits"
+                              type="number"
+                              value={formData.totalUnits}
+                              onChange={(e) =>
+                                updateFormData("totalUnits", e.target.value)
+                              }
+                              placeholder="156"
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-2 block">
+                              Unit Configuration *
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                "Studio Apartment",
+                                "1 Bedroom",
+                                "2 Bedrooms",
+                                "3 Bedrooms",
+                                "4 Bedrooms",
+                                "5 Bedrooms",
+                              ].map((config) => (
+                                <div
+                                  key={config}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={`edit-unit-${config}`}
+                                    checked={(
+                                      formData.unitConfiguration as string[]
+                                    ).includes(config)}
+                                    onCheckedChange={() =>
+                                      toggleUnitConfig(config)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`edit-unit-${config}`}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {config}
+                                  </label>
+                                </div>
+                              ))}
+                              {(formData.unitConfiguration as string[])
+                                .filter(
+                                  (c) =>
+                                    ![
+                                      "Studio Apartment",
+                                      "1 Bedroom",
+                                      "2 Bedrooms",
+                                      "3 Bedrooms",
+                                      "4 Bedrooms",
+                                      "5 Bedrooms",
+                                    ].includes(c),
+                                )
+                                .map((config) => (
+                                  <div
+                                    key={config}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <Checkbox
+                                      id={`edit-unit-custom-${config}`}
+                                      checked
+                                      onCheckedChange={() =>
+                                        toggleUnitConfig(config)
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={`edit-unit-custom-${config}`}
+                                      className="text-sm cursor-pointer"
+                                    >
+                                      {config}
+                                    </label>
+                                  </div>
+                                ))}
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              <Input
+                                value={customUnitInput}
+                                onChange={(e) =>
+                                  setCustomUnitInput(e.target.value)
+                                }
+                                placeholder="Add custom type"
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (customUnitInput.trim()) {
+                                    toggleUnitConfig(customUnitInput.trim());
+                                    setCustomUnitInput("");
+                                  }
+                                }}
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="edit-furnishingStatus">
+                            Furnishing Status *
+                          </Label>
+                          <Select
+                            value={formData.furnishingStatus}
+                            onValueChange={(val) =>
+                              updateFormData("furnishingStatus", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Unfurnished">
+                                Unfurnished
+                              </SelectItem>
+                              <SelectItem value="Semi-furnished">
+                                Semi-furnished
+                              </SelectItem>
+                              <SelectItem value="Fully furnished">
+                                Fully furnished
+                              </SelectItem>
+                              <SelectItem value="N/A">N/A</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">
+                            Shared Facilities
+                          </Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              "Pool",
+                              "Gym",
+                              "Parking",
+                              "Security",
+                              "Private Beach",
+                              "Spa",
+                              "Retail",
+                              "Meeting Rooms",
+                              "Elevators",
+                            ].map((facility) => (
+                              <div
+                                key={facility}
+                                className="flex items-center space-x-2"
+                              >
+                                <Checkbox
+                                  id={`edit-${facility}`}
+                                  checked={formData.sharedFacilities.includes(
+                                    facility,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleFacility(facility)
+                                  }
+                                />
+                                <label
+                                  htmlFor={`edit-${facility}`}
+                                  className="text-sm cursor-pointer"
+                                >
+                                  {facility}
+                                </label>
+                              </div>
+                            ))}
+                            {formData.sharedFacilities
+                              .filter(
+                                (f) =>
+                                  ![
+                                    "Pool",
+                                    "Gym",
+                                    "Parking",
+                                    "Security",
+                                    "Private Beach",
+                                    "Spa",
+                                    "Retail",
+                                    "Meeting Rooms",
+                                    "Elevators",
+                                  ].includes(f),
+                              )
+                              .map((customF) => (
+                                <div
+                                  key={customF}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={`edit-custom-${customF}`}
+                                    checked
+                                    onCheckedChange={() =>
+                                      toggleFacility(customF)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`edit-custom-${customF}`}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {customF}
+                                  </label>
+                                </div>
+                              ))}
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <Input
+                              value={customFacilityInput}
+                              onChange={(e) =>
+                                setCustomFacilityInput(e.target.value)
+                              }
+                              placeholder="Add custom facility"
+                              className="flex-1"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (customFacilityInput.trim()) {
+                                  toggleFacility(customFacilityInput.trim());
+                                  setCustomFacilityInput("");
+                                }
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">
+                              Facility Management Included
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Is professional facility management included?
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.facilityManagement}
+                            onCheckedChange={(val) =>
+                              updateFormData("facilityManagement", val)
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 3: Investment Structure */}
+                    {currentStep === 3 && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Ownership Options *</Label>
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            <div
+                              onClick={() =>
+                                updateFormData("ownershipType", "Full")
+                              }
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                formData.ownershipType === "Full"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-muted-foreground"
+                              }`}
+                            >
+                              <h4 className="font-medium">Full Ownership</h4>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Single owner purchases entire asset
+                              </p>
+                            </div>
+                            <div
+                              onClick={() =>
+                                updateFormData("ownershipType", "Fractional")
+                              }
+                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                formData.ownershipType === "Fractional"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-muted-foreground"
+                              }`}
+                            >
+                              <h4 className="font-medium">
+                                Fractional Ownership
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Multiple investors own fractions
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {formData.ownershipType === "Fractional" && (
+                          <>
+                            <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                              <h4 className="text-sm font-medium text-accent mb-3">
+                                Fraction Breakdown
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4">
+                                {formData.type === "Land" ? (
+                                  <>
+                                    <div>
+                                      <Label htmlFor="landUnitType">
+                                        Land Units *
+                                      </Label>
+                                      <Select
+                                        id="landUnitType"
+                                        value={formData.landUnitType || ""}
+                                        onValueChange={(val) =>
+                                          updateFormData("landUnitType", val)
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="sqm">
+                                            Per Square Meter
+                                          </SelectItem>
+                                          <SelectItem value="plot">
+                                            Per Plot
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="landUnitCount">
+                                        Number of Units *
+                                      </Label>
+                                      <Input
+                                        id="landUnitCount"
+                                        type="number"
+                                        value={formData.landUnitCount || ""}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "landUnitCount",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="e.g. 10"
+                                      />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <Label htmlFor="fractionTotal">
+                                        Total Fractions *
+                                      </Label>
+                                      <Input
+                                        id="fractionTotal"
+                                        type="number"
+                                        value={formData.fractionTotal}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "fractionTotal",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="100"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="costPerFraction">
+                                        Cost per Fraction (₦) *
+                                      </Label>
+                                      <Input
+                                        id="costPerFraction"
+                                        type="number"
+                                        value={formData.costPerFraction}
+                                        onChange={(e) =>
+                                          updateFormData(
+                                            "costPerFraction",
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="8500"
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-muted rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">
+                                  Funding Progress
+                                </span>
+                                <span className="text-sm font-semibold">
+                                  {fundingProgress}%
+                                </span>
+                              </div>
+                              <Progress
+                                value={fundingProgress}
+                                className="h-2"
+                              />
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Auto-calculated based on fraction sales
+                              </p>
+                            </div>
+                          </>
+                        )}
+
+                        {formData.ownershipType === "Full" && (
+                          <div className="p-4 bg-muted rounded-lg text-center">
+                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              Full ownership selected. Asset will be sold as a
+                              single unit.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 4: Pricing & Payment Logic */}
+                    {currentStep === 4 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="basePrice">
+                              Base Asset Value (₦) *
+                            </Label>
+                            <Input
+                              id="basePrice"
+                              type="number"
+                              value={formData.basePrice}
+                              onChange={(e) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  basePrice: e.target.value,
+                                  markup: "",
+                                }));
+                                setMarkupPct("");
+                                setCustomPctInput("");
+                                setCustomPctInput("");
+                              }}
+                              placeholder="1200000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="markup">BuyOps Markup *</Label>
+                            <div className="space-y-2">
+                              <Select
+                                value={markupPct}
+                                onValueChange={handleMarkupPctChange}
+                              >
+                                <SelectTrigger id="markup">
+                                  <SelectValue placeholder="Select markup %" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[
+                                    "1",
+                                    "2",
+                                    "3",
+                                    "5",
+                                    "7",
+                                    "10",
+                                    "15",
+                                    "20",
+                                  ].map((pct) => (
+                                    <SelectItem key={pct} value={pct}>
+                                      {pct}%
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="CUSTOM">
+                                    Custom %
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {markupPct === "CUSTOM" ? (
+                                <div className="space-y-1">
+                                  <div className="relative">
+                                    <Input
+                                      type="number"
+                                      value={customPctInput}
+                                      onChange={(e) =>
+                                        handleCustomPctChange(e.target.value)
+                                      }
+                                      placeholder="Enter custom %"
+                                      className="pr-8"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                      %
+                                    </span>
+                                  </div>
+                                  {formData.markup && (
+                                    <p className="text-sm text-muted-foreground">
+                                      = ₦
+                                      {Number(formData.markup).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                formData.markup && (
+                                  <p className="text-sm text-muted-foreground">
+                                    = ₦
+                                    {Number(formData.markup).toLocaleString()}
+                                  </p>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <div className="text-sm text-muted-foreground">
+                            Final Selling Price
+                          </div>
+                          <div className="text-3xl font-semibold text-accent mt-1">
+                            ₦{finalPrice.toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="mb-3 block">
+                            Payment Options *
+                          </Label>
+                          <div className="space-y-2">
+                            {["Full", "Installment", "Stage-based"].map(
+                              (option) => (
+                                <div
+                                  key={option}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <Checkbox
+                                    id={option}
+                                    checked={formData.paymentOptions.includes(
+                                      option,
+                                    )}
+                                    onCheckedChange={() =>
+                                      togglePaymentOption(option)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={option}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {option} Payment
+                                  </label>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </div>
+
+                        {formData.paymentOptions.includes("Installment") && (
+                          <div className="p-4 bg-muted rounded-lg space-y-4">
+                            <h4 className="text-sm font-medium">
+                              Installment Configuration
+                            </h4>
+
+                            <div>
+                              <Label htmlFor="downPaymentAmount">
+                                Down Payment Amount (₦) *
+                              </Label>
+                              <Input
+                                id="downPaymentAmount"
+                                type="number"
+                                value={formData.downPaymentAmount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "downPaymentAmount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="5000000"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Minimum initial payment required
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-3 block">
+                                Allowed Payment Periods *
+                              </Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  "3 months",
+                                  "6 months",
+                                  "12 months",
+                                  "18 months",
+                                  "24 months",
+                                  "36 months",
+                                ].map((period) => (
+                                  <div
+                                    key={period}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <Checkbox
+                                      id={period}
+                                      checked={formData.installmentPeriods.includes(
+                                        period,
+                                      )}
+                                      onCheckedChange={() =>
+                                        toggleInstallmentPeriod(period)
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={period}
+                                      className="text-sm cursor-pointer"
+                                    >
+                                      {period}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h4 className="text-sm font-medium mb-3">
+                            Discount Configuration
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="offPlanDiscount">
+                                Off-plan Discount (%)
+                              </Label>
+                              <Input
+                                id="offPlanDiscount"
+                                type="number"
+                                step="0.1"
+                                value={formData.offPlanDiscount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "offPlanDiscount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="10"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="stageBasedDiscount">
+                                Stage-based Discount (%)
+                              </Label>
+                              <Input
+                                id="stageBasedDiscount"
+                                type="number"
+                                step="0.1"
+                                value={formData.stageBasedDiscount}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "stageBasedDiscount",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-blue-900 dark:text-blue-100">
+                            <strong>Payment Security:</strong> All payments are
+                            processed through escrow accounts with full investor
+                            protection and transparent transaction tracking.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 5: Returns & Projections */}
+                    {currentStep === 5 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="projectedRentalIncome">
+                              Projected Rental Income (₦) *
+                            </Label>
+                            <Input
+                              id="projectedRentalIncome"
+                              type="number"
+                              value={formData.projectedRentalIncome}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "projectedRentalIncome",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="75000"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="rentalFrequency">
+                              Rental Frequency *
+                            </Label>
+                            <Select
+                              value={formData.rentalFrequency}
+                              onValueChange={(val) =>
+                                updateFormData("rentalFrequency", val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Monthly">Monthly</SelectItem>
+                                <SelectItem value="Quarterly">
+                                  Quarterly
+                                </SelectItem>
+                                <SelectItem value="Annual">Annual</SelectItem>
+                                <SelectItem value="N/A">N/A</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="operatingCost">
+                            Operating Cost Assumptions (₦/year) *
+                          </Label>
+                          <Input
+                            id="operatingCost"
+                            type="number"
+                            value={formData.operatingCost}
+                            onChange={(e) =>
+                              updateFormData("operatingCost", e.target.value)
+                            }
+                            placeholder="15000"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Include maintenance, management fees, and utilities
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="capitalAppreciation">
+                              Capital Appreciation (% p.a.) *
+                            </Label>
+                            <Input
+                              id="capitalAppreciation"
+                              type="number"
+                              step="0.1"
+                              value={formData.capitalAppreciation}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "capitalAppreciation",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="8.0"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="firstPayoutDate">
+                              First Payout Date
+                            </Label>
+                            <Input
+                              id="firstPayoutDate"
+                              type="date"
+                              value={formData.firstPayoutDate}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "firstPayoutDate",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg space-y-3">
+                          <h4 className="text-sm font-medium text-accent">
+                            Calculated Returns
+                          </h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Rental Yield
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {rentalYield}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Capital Growth
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {formData.capitalAppreciation || 0}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Total Annual Return
+                              </div>
+                              <div className="text-xl font-semibold text-accent">
+                                {totalAnnualReturn}%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-muted rounded-lg space-y-4">
+                          <h4 className="text-sm font-medium">
+                            Projected Investment Returns (Range)
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Define the expected range of returns for investor
+                            transparency
+                          </p>
+
+                          <div className="space-y-4">
+                            <div>
+                              <Label className="mb-2 block">
+                                Rental Yield Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.rentalYieldMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "rentalYieldMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 8)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.rentalYieldMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "rentalYieldMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 10)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Annual rental income as percentage of property
+                                value
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-2 block">
+                                Capital Appreciation Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.capitalAppreciationMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "capitalAppreciationMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 15)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.capitalAppreciationMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "capitalAppreciationMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 20)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Expected property value growth per annum
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="mb-2 block">
+                                Total Returns Range (%)
+                              </Label>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.totalReturnsMin}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "totalReturnsMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Min (e.g., 23)"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.totalReturnsMax}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "totalReturnsMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Max (e.g., 30)"
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Combined annual returns (rental + appreciation)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 6: Risk & Transparency */}
+                    {currentStep === 6 && (
+                      <div className="space-y-4">
+                        {formData.type !== "Land" &&
+                          formData.type !== "Completed" &&
+                          formData.projectStatus &&
+                          formData.projectStatus !== "Completed" &&
+                          formData.projectStatus !== "Available" && (
+                            <div>
+                              <Label htmlFor="constructionProgress">
+                                Construction Progress (%)
+                              </Label>
+                              <Input
+                                id="constructionProgress"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={formData.constructionProgress}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "constructionProgress",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="70"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Current completion percentage of the project
+                              </p>
+                            </div>
+                          )}
+
+                        <div>
+                          <Label>Risk Level *</Label>
+                          <div className="grid grid-cols-3 gap-3 mt-2">
+                            {["Low", "Medium", "High"].map((level) => (
+                              <div
+                                key={level}
+                                onClick={() =>
+                                  updateFormData("riskLevel", level)
+                                }
+                                className={`p-3 border-2 rounded-lg cursor-pointer text-center transition-all ${
+                                  formData.riskLevel === level
+                                    ? level === "Low"
+                                      ? "border-accent bg-accent/10 text-accent"
+                                      : level === "Medium"
+                                        ? "border-warning bg-warning/10 text-warning"
+                                        : "border-destructive bg-destructive/10 text-destructive"
+                                    : "border-border hover:border-muted-foreground"
+                                }`}
+                              >
+                                <div className="font-medium">{level}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-muted rounded-lg space-y-4">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">
+                              Investment Risk Factors
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Select applicable risk factors for investor
+                              transparency
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            {[
+                              "Construction timeline risk (if applicable)",
+                              "Market volatility in property sector",
+                              "Rental income may vary based on occupancy",
+                              "Regulatory and economic factors",
+                              "Currency fluctuation risk",
+                              "Developer financial stability",
+                            ].map((factor) => (
+                              <div
+                                key={factor}
+                                className="flex items-start space-x-2"
+                              >
+                                <Checkbox
+                                  id={factor}
+                                  checked={formData.riskFactors.includes(
+                                    factor,
+                                  )}
+                                  onCheckedChange={() =>
+                                    toggleRiskFactor(factor)
+                                  }
+                                />
+                                <label
+                                  htmlFor={factor}
+                                  className="text-sm cursor-pointer leading-tight"
+                                >
+                                  {factor}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div>
+                            <Label
+                              htmlFor="customRiskFactor"
+                              className="text-xs"
+                            >
+                              Add Custom Risk Factor
+                            </Label>
+                            <div className="flex gap-2 mt-1">
+                              <Input
+                                id="customRiskFactor"
+                                value={formData.customRiskFactor}
+                                onChange={(e) =>
+                                  updateFormData(
+                                    "customRiskFactor",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Enter custom risk factor"
+                                className="text-sm"
+                                onKeyPress={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addCustomRiskFactor();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addCustomRiskFactor}
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+
+                          {formData.riskFactors.filter(
+                            (f) =>
+                              ![
+                                "Construction timeline risk (if applicable)",
+                                "Market volatility in property sector",
+                                "Rental income may vary based on occupancy",
+                                "Regulatory and economic factors",
+                                "Currency fluctuation risk",
+                                "Developer financial stability",
+                              ].includes(f),
+                          ).length > 0 && (
+                            <div>
+                              <Label className="text-xs mb-2 block">
+                                Custom Risk Factors:
+                              </Label>
+                              <div className="space-y-2">
+                                {formData.riskFactors
+                                  .filter(
+                                    (f) =>
+                                      ![
+                                        "Construction timeline risk (if applicable)",
+                                        "Market volatility in property sector",
+                                        "Rental income may vary based on occupancy",
+                                        "Regulatory and economic factors",
+                                        "Currency fluctuation risk",
+                                        "Developer financial stability",
+                                      ].includes(f),
+                                  )
+                                  .map((factor) => (
+                                    <div
+                                      key={factor}
+                                      className="flex items-center justify-between p-2 bg-background rounded border text-sm"
+                                    >
+                                      <span>{factor}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeRiskFactor(factor)}
+                                        className="h-6 w-6 p-0"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {formData.type === "Off Plan" && (
+                          <div>
+                            <Label htmlFor="offPlanSecurity">
+                              Off-plan Security Notes
+                            </Label>
+                            <Textarea
+                              id="offPlanSecurity"
+                              value={formData.offPlanSecurity}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "offPlanSecurity",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="e.g., Developer escrow account + Bank guarantee"
+                              rows={3}
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <Label htmlFor="exitLiquidity">
+                            Exit Liquidity Settings *
+                          </Label>
+                          <Select
+                            value={formData.exitLiquidity}
+                            onValueChange={(val) =>
+                              updateFormData("exitLiquidity", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="High">
+                                High - Can exit within 30 days
+                              </SelectItem>
+                              <SelectItem value="Medium">
+                                Medium - Exit within 60-90 days
+                              </SelectItem>
+                              <SelectItem value="Low">
+                                Low - Exit after 6+ months
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="managementMode">
+                            Management Mode *
+                          </Label>
+                          <Select
+                            value={formData.managementMode}
+                            onValueChange={(val) =>
+                              updateFormData("managementMode", val)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BuyOps-managed">
+                                BuyOps-managed
+                              </SelectItem>
+                              <SelectItem value="Self-managed">
+                                Self-managed
+                              </SelectItem>
+                              <SelectItem value="Third-party managed">
+                                Third-party managed
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <CircleAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-amber-900 dark:text-amber-100">
+                            <strong>Transparency Notice:</strong> All risk
+                            factors, construction progress, and financial
+                            projections are regularly updated and verified by
+                            independent auditors.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 7: Media & Documentation */}
+                    {currentStep === 7 && (
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Upload Images</h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            High-quality photos of the property
+                          </p>
+                          <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => imageInputRef.current?.click()}
+                          >
+                            Choose Files
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.images > 0
+                              ? `${formData.images} images uploaded`
+                              : "No images uploaded yet"}
+                          </p>
+                          {uploadedImages.length > 0 && (
+                            <div className="mt-4 space-y-2 text-left">
+                              {uploadedImages.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                                >
+                                  <span className="truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeImage(index)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">Upload Documents</h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Legal documents, floor plans, certificates
+                          </p>
+                          <input
+                            ref={documentInputRef}
+                            type="file"
+                            accept=".pdf,.doc,.docx,.txt"
+                            multiple
+                            onChange={handleDocumentUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => documentInputRef.current?.click()}
+                          >
+                            Choose Files
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.documents > 0
+                              ? `${formData.documents} documents uploaded`
+                              : "No documents uploaded yet"}
+                          </p>
+                          {uploadedDocuments.length > 0 && (
+                            <div className="mt-4 space-y-2 text-left">
+                              {uploadedDocuments.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                                >
+                                  <span className="truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeDocument(index)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors">
+                          <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                          <h4 className="font-medium mb-1">
+                            Virtual Tour Links
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Add 360° virtual tours or video walkthroughs
+                          </p>
+                          <Input
+                            placeholder="https://..."
+                            className="mt-2 max-w-md mx-auto"
+                          />
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {formData.virtualTours > 0
+                              ? `${formData.virtualTours} tours added`
+                              : "No virtual tours added yet"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 8: Commission Setup */}
+                    {currentStep === 8 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h4 className="font-medium mb-1">
+                            Commission Structure
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Set commission percentages for agents involved in
+                            the sale
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="leadCommission">
+                              Lead Commission (%) *
+                            </Label>
+                            <Input
+                              id="leadCommission"
+                              type="number"
+                              step="0.1"
+                              value={formData.leadCommission}
+                              onChange={(e) =>
+                                updateFormData("leadCommission", e.target.value)
+                              }
+                              placeholder="1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="closerCommission">
+                              Deal Closer Commission (%) *
+                            </Label>
+                            <Input
+                              id="closerCommission"
+                              type="number"
+                              step="0.1"
+                              value={formData.closerCommission}
+                              onChange={(e) =>
+                                updateFormData(
+                                  "closerCommission",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="1.5"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Total Commission
+                              </div>
+                              <div className="text-2xl font-semibold text-accent">
+                                {totalCommission.toFixed(1)}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-muted-foreground">
+                                Commission per Sale
+                              </div>
+                              <div className="text-2xl font-semibold text-accent">
+                                ₦
+                                {(
+                                  (finalPrice * totalCommission) /
+                                  100
+                                ).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Based on final selling price of ₦
+                            {finalPrice.toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-muted rounded">
+                            <span className="text-sm">Lead Agent Earns:</span>
+                            <span className="font-semibold">
+                              ₦
+                              {(
+                                (finalPrice *
+                                  (parseFloat(formData.leadCommission) || 0)) /
+                                100
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-muted rounded">
+                            <span className="text-sm">Closer Agent Earns:</span>
+                            <span className="font-semibold">
+                              ₦
+                              {(
+                                (finalPrice *
+                                  (parseFloat(formData.closerCommission) ||
+                                    0)) /
+                                100
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 9: Review & Publish - Should be same as create */}
+                    {currentStep === 9 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg">
+                          <h3 className="font-semibold text-lg mb-4">
+                            Asset Summary
+                          </h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Asset Name:
+                              </span>
+                              <span className="font-medium text-right">
+                                {formData.name || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Reference Code:
+                              </span>
+                              <span className="font-medium">
+                                {formData.referenceCode || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Type:
+                              </span>
+                              <Badge variant="outline">
+                                {formData.type?.toUpperCase() || "—"}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Location:
+                              </span>
+                              <span className="font-medium text-right">
+                                {formData.location || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Property Category:
+                              </span>
+                              <span className="font-medium">
+                                {formData.propertyCategory || "—"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Total Units:
+                              </span>
+                              <span className="font-medium">
+                                {formData.totalUnits || "—"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-accent/10 border border-accent rounded-lg">
+                          <h4 className="font-medium text-accent mb-3">
+                            Financial Summary
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                Final Selling Price:
+                              </span>
+                              <span className="font-semibold">
+                                ₦{finalPrice.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Ownership Type:</span>
+                              <span className="font-medium">
+                                {formData.ownershipType}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">
+                                Total Annual Return:
+                              </span>
+                              <span className="font-semibold text-accent">
+                                {totalAnnualReturn}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm">Total Commission:</span>
+                              <span className="font-semibold">
+                                {totalCommission.toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">
+                              Publish Status
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Toggle to publish asset immediately
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.status === "published"}
+                            onCheckedChange={(val) =>
+                              updateFormData(
+                                "status",
+                                val ? "published" : "draft",
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="border-t pt-4 px-6">
+                    <div className="flex justify-between w-full">
+                      <Button
+                        variant="outline"
+                        onClick={prevStep}
+                        disabled={currentStep === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedPlatform("");
+                            setFormData(INITIAL_FORM_DATA);
+                            setCurrentStep(1);
+                          }}
+                        >
+                          ← Change Platform
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setCreateDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSubmit("draft")}
+                          disabled={loading}
+                        >
+                          Save & Continue Later
+                        </Button>
+                        {currentStep < totalSteps ? (
+                          <Button onClick={nextStep}>
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        ) : (
+                          <Button onClick={() => handleSubmit()}>
+                            {formData.status === "published"
+                              ? "Publish Asset"
+                              : "Save as Draft"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                   </DialogFooter>
+                </DialogContent>
+              </Dialog>
     </div>
   );
 }
