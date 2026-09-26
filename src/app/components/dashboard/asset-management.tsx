@@ -3,6 +3,7 @@ import {
   Calendar,
   CheckCircle2,
   CircleAlert,
+  CircleCheck,
   Download,
   Eye,
   FileText,
@@ -161,6 +162,7 @@ export function AssetManagement() {
     currentFunding: "",
     fundingProgress: "",
     minimumInvestment: "",
+    investmentType: "", // "Equity" | "Debt" | "Mezzanine"
     projectedRentalIncome: "",
     rentalFrequency: "Annual",
     operatingCost: "",
@@ -373,10 +375,199 @@ export function AssetManagement() {
       ? Math.floor(Math.random() * 100)
       : 100;
 
+  // Development Stage configuration — drives asset type, project status and pricing options
+  const STAGE_OPTIONS = [
+    {
+      value: "Before Development" as const,
+      label: "Pre-Development",
+      icon: MapPin,
+      sub: "Land · Off-plan · Under construction",
+      types: ["Land", "Off Plan", "Under Construction"],
+      statuses: [
+        "Land Acquisition",
+        "Planning",
+        "Approvals",
+        "Foundation",
+        "Under Construction",
+      ],
+      defaultType: "Off Plan",
+      defaultStatus: "Foundation",
+      description:
+        "The asset does not exist yet — investor capital funds land acquisition, approvals and construction. Entry pricing is based on cost (land + build) plus margin, and returns are realized through off-plan sales, staged discounts or at project completion.",
+      chips: [
+        "Cost-based pricing",
+        "Off-plan & stage discounts",
+        "Returns at completion or exit",
+        "Key risk: execution & timeline",
+      ],
+    },
+    {
+      value: "After Development" as const,
+      label: "Post-Development",
+      icon: Building2,
+      sub: "Completed · Ready to move · Operational",
+      types: ["Completed", "Ready to Move", "Operational"],
+      statuses: ["Completed", "Available", "Leased", "Sold Out"],
+      defaultType: "Completed",
+      defaultStatus: "Available",
+      description:
+        "The asset is built — investors buy into a physical, income-producing property priced at market value. Every figure is verifiable (inspection, occupancy, audited yields) and returns come from rental income and capital appreciation from day one.",
+      chips: [
+        "Market-based pricing",
+        "Income from day one",
+        "Verified yield & occupancy",
+        "Key risk: occupancy & market",
+      ],
+    },
+  ];
+
+  const stageConfig =
+    STAGE_OPTIONS.find((s) => s.value === formData.developmentStage) ||
+    STAGE_OPTIONS[0];
+  const isBeforeDev = stageConfig.value === "Before Development";
+
+  // Include the current value when editing legacy assets whose combination
+  // predates these option lists (e.g. Land + Available)
+  const stageTypes = stageConfig.types.includes(formData.type)
+    ? stageConfig.types
+    : [...stageConfig.types, formData.type];
+  const stageStatuses = stageConfig.statuses.includes(formData.projectStatus)
+    ? stageConfig.statuses
+    : [...stageConfig.statuses, formData.projectStatus];
+
+  const handleStageChange = (stage: (typeof STAGE_OPTIONS)[number]) => {
+    if (stage.value === formData.developmentStage) return;
+    const typeOk = stage.types.includes(formData.type);
+    const statusOk = stage.statuses.includes(formData.projectStatus);
+    setFormData((prev) => ({
+      ...prev,
+      developmentStage: stage.value,
+      type: typeOk ? prev.type : stage.defaultType,
+      projectStatus: statusOk ? prev.projectStatus : stage.defaultStatus,
+    }));
+    if (!typeOk || !statusOk) {
+      toast.info(
+        `Switched to ${stage.label} — asset type and status adjusted to match`,
+      );
+    }
+  };
+
+  // Investment Program configuration — drives investment structure, terms, returns and risk
+  const PROGRAM_OPTIONS = [
+    {
+      value: "Urbco Foundry",
+      icon: Zap,
+      tag: "Velocity portfolio",
+      description:
+        "High-velocity property sales, core commercial assets and primary investment portfolios — standard and fractional tickets for retail and individual investors, with fast closings and yield-focused payouts.",
+      bullets: [
+        "Standard & fractional tickets",
+        "Fast-closing retail deals",
+        "Yield-focused distributions",
+      ],
+    },
+    {
+      value: "Urbco Harbor",
+      icon: TrendingUp,
+      tag: "Structured capital",
+      description:
+        "Stationary funding for exceptionally large investments — institutional-scale commitments, long horizons and milestone-based disbursement with full due-diligence disclosure.",
+      bullets: [
+        "Exceptionally large commitments",
+        "Milestone-based disbursement",
+        "Institutional due diligence",
+      ],
+    },
+  ];
+
+  const isHarbor = formData.platform === "Urbco Harbor";
+
+  const paymentPeriods = isHarbor
+    ? ["12 months", "24 months", "36 months", "48 months", "60 months"]
+    : [
+        "3 months",
+        "6 months",
+        "12 months",
+        "18 months",
+        "24 months",
+        "36 months",
+      ];
+
+  const rentalFrequencies = isHarbor
+    ? ["Semi-Annual", "Annual", "N/A"]
+    : ["Monthly", "Quarterly", "Annual", "N/A"];
+
+  const RISK_PRESETS: Record<string, string[]> = {
+    "Urbco Foundry": [
+      "Construction timeline risk (if applicable)",
+      "Market volatility in property sector",
+      "Rental income may vary based on occupancy",
+      "Regulatory and economic factors",
+      "Currency fluctuation risk",
+      "Developer financial stability",
+    ],
+    "Urbco Harbor": [
+      "Construction timeline risk (if applicable)",
+      "Counterparty & sponsor credit risk",
+      "Regulatory and economic factors",
+      "Currency fluctuation risk",
+      "Developer financial stability",
+      "Liquidity risk on large-ticket exit",
+    ],
+  };
+  const presetRiskFactors =
+    RISK_PRESETS[formData.platform] || RISK_PRESETS["Urbco Foundry"];
+
+  const handleProgramChange = (program: string) => {
+    if (program === formData.platform) return;
+    const freqs =
+      program === "Urbco Harbor"
+        ? ["Semi-Annual", "Annual", "N/A"]
+        : ["Monthly", "Quarterly", "Annual", "N/A"];
+    const periods =
+      program === "Urbco Harbor"
+        ? ["12 months", "24 months", "36 months", "48 months", "60 months"]
+        : ["3 months", "6 months", "12 months", "18 months", "24 months", "36 months"];
+    setFormData((prev) => ({
+      ...prev,
+      platform: program,
+      rentalFrequency: freqs.includes(prev.rentalFrequency)
+        ? prev.rentalFrequency
+        : program === "Urbco Harbor"
+          ? "Annual"
+          : "Monthly",
+      installmentPeriods: prev.installmentPeriods.filter((p) =>
+        periods.includes(p),
+      ).length
+        ? prev.installmentPeriods.filter((p) => periods.includes(p))
+        : program === "Urbco Harbor"
+          ? ["12 months", "24 months", "36 months"]
+          : ["6 months", "12 months", "24 months"],
+      managementMode: /^(BuyOps|Urbco Foundry|Urbco Harbor)-managed$/.test(
+        prev.managementMode,
+      )
+        ? `${program}-managed`
+        : prev.managementMode,
+    }));
+    toast.info(`${program} selected — funding terms and returns adjusted`);
+  };
+
   // Step Navigation & Validation
   const validateStep1 = () => {
     if (!formData.name.trim()) {
       toast.error("Please enter the Asset Name");
+      return false;
+    }
+    if (!formData.developmentStage) {
+      toast.error("Please select the Development Stage");
+      return false;
+    }
+    if (!formData.type) {
+      toast.error("Please select the Asset Type");
+      return false;
+    }
+    if (!formData.projectStatus) {
+      toast.error("Please select the Project Status");
       return false;
     }
     if (!formData.company) {
@@ -496,9 +687,29 @@ export function AssetManagement() {
         costPerFraction: asset.fractionCost?.toString() || "",
         basePrice: asset.price?.toString() || "",
         markup: asset.markup?.toString() || "",
+        paymentOptions:
+          (asset.paymentOptions as string[] | undefined) ||
+          INITIAL_FORM_DATA.paymentOptions,
+        installmentPeriods:
+          (asset.installmentPeriods as string[] | undefined) ||
+          INITIAL_FORM_DATA.installmentPeriods,
         downPaymentAmount: asset.downPaymentAmount?.toString() || "",
         offPlanDiscount: asset.offPlanDiscount?.toString() || "",
+        stageBasedDiscount: asset.stageBasedDiscount?.toString() || "",
+        targetFunding:
+          (asset as any).targetFunding?.toString() ||
+          (asset as any).totalInvestmentRequired?.toString() ||
+          "",
+        currentFunding:
+          (asset as any).currentFunding?.toString() || "",
+        minimumInvestment:
+          (asset as any).minimumInvestment?.toString() || "",
+        investmentType: (asset as any).investmentType || "",
         projectedRentalIncome: asset.projectedRentalIncome?.toString() || "",
+        rentalFrequency: asset.rentalFrequency || "Annual",
+        operatingCost: asset.operatingCost?.toString() || "",
+        capitalAppreciation: asset.capitalAppreciation?.toString() || "",
+        firstPayoutDate: asset.firstPayoutDate || "",
         rentalYieldMin: asset.rentalYieldMin?.toString() || "",
         rentalYieldMax: asset.rentalYieldMax?.toString() || "",
         capitalAppreciationMin: asset.capitalAppreciationMin?.toString() || "",
@@ -508,12 +719,17 @@ export function AssetManagement() {
         constructionProgress: asset.constructionStage?.toString() || "",
         riskLevel: asset.riskLevel || "Low",
         riskFactors: asset.riskFactors || [],
-        managementMode: asset.managementMode || "Urbco Foundry-managed",
+        managementMode:
+          asset.managementMode ||
+          `${asset.platform || "Urbco Foundry"}-managed`,
         leadCommission: asset.leadCommission?.toString() || "2.5",
         closerCommission: asset.closerCommission?.toString() || "1.5",
         status: asset.status || "active",
       });
       setEditDialogOpen(true);
+      setCurrentStep(1);
+      setMarkupPct("");
+      setCustomPctInput("");
     }
   };
 
@@ -628,7 +844,7 @@ export function AssetManagement() {
                             : currentStep === 2
                               ? "Physical Details & Facilities"
                               : currentStep === 3
-                                ? "Investment Structure"
+                                ? "Investment Program & Structure"
                                 : currentStep === 4
                                   ? "Pricing Logic"
                                   : currentStep === 5
@@ -642,16 +858,28 @@ export function AssetManagement() {
                                           : "Review & Publish"}
                         </DialogDescription>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          formData.developmentStage === "Before Development"
-                            ? "border-amber-500 text-amber-600 bg-amber-50"
-                            : "border-emerald-500 text-emerald-600 bg-emerald-50"
-                        }
-                      >
-                        {formData.developmentStage}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={
+                            formData.developmentStage === "Before Development"
+                              ? "border-amber-500 text-amber-600 bg-amber-50"
+                              : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                          }
+                        >
+                          {formData.developmentStage}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isHarbor
+                              ? "border-purple-500 text-purple-600 bg-purple-50"
+                              : "border-blue-500 text-blue-600 bg-blue-50"
+                          }
+                        >
+                          {formData.platform}
+                        </Badge>
+                      </div>
                     </div>
 
                     {/* Progress Bar */}
@@ -672,110 +900,86 @@ export function AssetManagement() {
                     {/* Step 1: Asset Identity & Status */}
                     {currentStep === 1 && (
                       <div className="space-y-4">
-                        {/* Development Stage Selection */}
+                        {/* Development Stage — compact segmented toggle */}
                         <div>
-                          <Label className="text-base font-semibold mb-2 block">
+                          <Label className="mb-2 block">
                             Development Stage *
                           </Label>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            Determines investment structure, cost details, ROI metrics, and investor targeting.
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div
-                              onClick={() => updateFormData("developmentStage", "Before Development")}
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.developmentStage === "Before Development"
-                                  ? "border-amber-500 bg-amber-50/40 dark:bg-amber-950/20"
-                                  : "border-border hover:border-amber-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
-                                  BD
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-sm">Before Development</h4>
-                                  <span className="text-xs text-amber-600 font-medium">Pre-development Stage</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Land acquisition, planning, feasibility, and early construction funding.
-                              </p>
-                            </div>
-                            <div
-                              onClick={() => updateFormData("developmentStage", "After Development")}
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.developmentStage === "After Development"
-                                  ? "border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
-                                  : "border-border hover:border-emerald-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                                  AD
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-sm">After Development</h4>
-                                  <span className="text-xs text-emerald-600 font-medium">Post-development Stage</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                Completed or near-completion properties ready for sale or investment.
-                              </p>
-                            </div>
+                          <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+                            {STAGE_OPTIONS.map((stage) => {
+                              const selected =
+                                formData.developmentStage === stage.value;
+                              const Icon = stage.icon;
+                              return (
+                                <button
+                                  key={stage.value}
+                                  type="button"
+                                  onClick={() => handleStageChange(stage)}
+                                  className={`flex items-center gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                                    selected
+                                      ? "bg-background shadow-sm border border-border"
+                                      : "hover:bg-background/60 border border-transparent"
+                                  }`}
+                                >
+                                  <Icon
+                                    className={`h-4 w-4 shrink-0 ${
+                                      selected
+                                        ? isBeforeDev
+                                          ? "text-amber-600"
+                                          : "text-emerald-600"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  />
+                                  <div className="min-w-0">
+                                    <div
+                                      className={`text-sm font-medium ${
+                                        selected
+                                          ? ""
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      {stage.label}
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground truncate">
+                                      {stage.sub}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
-                        </div>
-
-                        {/* Application Sorting */}
-                        <div>
-                          <Label className="text-base font-semibold mb-2 block">
-                            Application Sorting *
-                          </Label>
-                          <p className="text-xs text-muted-foreground mb-3">
-                            Specify whether this asset belongs to Urbco Foundry or Urbco Harbor for user access & level routing.
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div
-                              onClick={() => updateFormData("platform", "Urbco Foundry")}
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.platform === "Urbco Foundry"
-                                  ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
-                                  : "border-border hover:border-blue-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                                  OF
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-sm">Urbco Foundry</h4>
-                                  <span className="text-xs text-blue-600 font-medium">Foundry Application</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                High-velocity property sales, core commercial assets, and primary investment portfolios.
+                          {/* Stage context — what this stage means */}
+                          <div
+                            className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2.5 ${
+                              isBeforeDev
+                                ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                                : "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p
+                                className={`text-xs leading-relaxed ${
+                                  isBeforeDev
+                                    ? "text-amber-900 dark:text-amber-100"
+                                    : "text-emerald-900 dark:text-emerald-100"
+                                }`}
+                              >
+                                {stageConfig.description}
                               </p>
-                            </div>
-                            <div
-                              onClick={() => updateFormData("platform", "Urbco Harbor")}
-                              className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                                formData.platform === "Urbco Harbor"
-                                  ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/20"
-                                  : "border-border hover:border-purple-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
-                                  OH
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-sm">Urbco Harbor</h4>
-                                  <span className="text-xs text-purple-600 font-medium">Harbor Application</span>
-                                </div>
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {stageConfig.chips.map((chip) => (
+                                  <span
+                                    key={chip}
+                                    className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                      isBeforeDev
+                                        ? "bg-amber-100/70 border-amber-300 text-amber-800 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-200"
+                                        : "bg-emerald-100/70 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-700 dark:text-emerald-200"
+                                    }`}
+                                  >
+                                    {chip}
+                                  </span>
+                                ))}
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                Specialized institutional funding, development projects, and capital partner offerings.
-                              </p>
                             </div>
                           </div>
                         </div>
@@ -820,18 +1024,18 @@ export function AssetManagement() {
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Land">Land</SelectItem>
-                                <SelectItem value="Off Plan">
-                                  Off Plan
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
+                                {stageTypes.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {isBeforeDev
+                                ? "Pre-development assets: land, off-plan units or active construction"
+                                : "Post-development assets: built and ready for occupation or use"}
+                            </p>
                           </div>
                           <div>
                             <Label htmlFor="projectStatus">
@@ -847,23 +1051,18 @@ export function AssetManagement() {
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Planning">
-                                  Planning
-                                </SelectItem>
-                                <SelectItem value="Foundation">
-                                  Foundation
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                                <SelectItem value="Available">
-                                  Available
-                                </SelectItem>
+                                {stageStatuses.map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    {s}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {isBeforeDev
+                                ? "Where the project sits in the development pipeline"
+                                : "Sales / occupancy state of the completed asset"}
+                            </p>
                           </div>
                         </div>
 
@@ -1267,9 +1466,90 @@ export function AssetManagement() {
                       </div>
                     )}
 
-                    {/* Step 3: Investment Structure */}
+                    {/* Step 3: Investment Program & Structure */}
                     {currentStep === 3 && (
                       <div className="space-y-4">
+                        {/* Investment Program */}
+                        <div>
+                          <Label className="text-base font-semibold mb-1 block">
+                            Investment Program *
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Defines the kind of investment this asset carries —
+                            it shapes ownership structures, funding terms,
+                            returns and risk disclosure in the steps that
+                            follow.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {PROGRAM_OPTIONS.map((program) => {
+                              const selected =
+                                formData.platform === program.value;
+                              const Icon = program.icon;
+                              return (
+                                <div
+                                  key={program.value}
+                                  onClick={() =>
+                                    handleProgramChange(program.value)
+                                  }
+                                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    selected
+                                      ? program.value === "Urbco Harbor"
+                                        ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/20"
+                                        : "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 mb-1.5">
+                                    <div
+                                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                        program.value === "Urbco Harbor"
+                                          ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                                          : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                      }`}
+                                    >
+                                      <Icon className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-sm">
+                                        {program.value}
+                                      </h4>
+                                      <span
+                                        className={`text-xs font-medium ${
+                                          program.value === "Urbco Harbor"
+                                            ? "text-purple-600 dark:text-purple-400"
+                                            : "text-blue-600 dark:text-blue-400"
+                                        }`}
+                                      >
+                                        {program.tag}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {program.description}
+                                  </p>
+                                  <ul className="mt-2 space-y-0.5">
+                                    {program.bullets.map((b) => (
+                                      <li
+                                        key={b}
+                                        className="text-[11px] text-muted-foreground flex items-center gap-1.5"
+                                      >
+                                        <span
+                                          className={`w-1 h-1 rounded-full shrink-0 ${
+                                            program.value === "Urbco Harbor"
+                                              ? "bg-purple-500"
+                                              : "bg-blue-500"
+                                          }`}
+                                        />
+                                        {b}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <div>
                           <Label>Ownership Options *</Label>
                           <div className="grid grid-cols-2 gap-3 mt-2">
@@ -1285,7 +1565,9 @@ export function AssetManagement() {
                             >
                               <h4 className="font-medium">Full Ownership</h4>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Single owner purchases entire asset
+                                {isHarbor
+                                  ? "Whole-asset acquisition by a single institutional buyer"
+                                  : "Single owner purchases entire asset"}
                               </p>
                             </div>
                             <div
@@ -1302,11 +1584,88 @@ export function AssetManagement() {
                                 Fractional Ownership
                               </h4>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Multiple investors own fractions
+                                {isHarbor
+                                  ? "Large fractional blocks sized for institutional commitments"
+                                  : "Multiple investors own fractions"}
                               </p>
                             </div>
                           </div>
                         </div>
+
+                        {/* Harbor — large-ticket funding parameters */}
+                        {isHarbor && (
+                          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                                Large-Ticket Funding Parameters
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Urbco Harbor structures stationary funding for
+                                exceptionally large investments.
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="targetFunding">
+                                  Total Funding Required (₦)
+                                </Label>
+                                <Input
+                                  id="targetFunding"
+                                  type="number"
+                                  value={formData.targetFunding}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "targetFunding",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="50000000000"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="minimumInvestment">
+                                  Minimum Investment (₦)
+                                </Label>
+                                <Input
+                                  id="minimumInvestment"
+                                  type="number"
+                                  value={formData.minimumInvestment}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "minimumInvestment",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="10000000"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="investmentType">
+                                Investment Instrument
+                              </Label>
+                              <Select
+                                value={formData.investmentType}
+                                onValueChange={(val) =>
+                                  updateFormData("investmentType", val)
+                                }
+                              >
+                                <SelectTrigger id="investmentType">
+                                  <SelectValue placeholder="Select instrument" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Equity">
+                                    Equity
+                                  </SelectItem>
+                                  <SelectItem value="Debt">Debt</SelectItem>
+                                  <SelectItem value="Mezzanine">
+                                    Mezzanine
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
 
                         {formData.ownershipType === "Fractional" && (
                           <>
@@ -1596,14 +1955,7 @@ export function AssetManagement() {
                                 Allowed Payment Periods *
                               </Label>
                               <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  "3 months",
-                                  "6 months",
-                                  "12 months",
-                                  "18 months",
-                                  "24 months",
-                                  "36 months",
-                                ].map((period) => (
+                                {paymentPeriods.map((period) => (
                                   <div
                                     key={period}
                                     className="flex items-center space-x-2"
@@ -1630,49 +1982,85 @@ export function AssetManagement() {
                           </div>
                         )}
 
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="text-sm font-medium mb-3">
-                            Discount Configuration
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="offPlanDiscount">
-                                Off-plan Discount (%)
-                              </Label>
-                              <Input
-                                id="offPlanDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.offPlanDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "offPlanDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="10"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="stageBasedDiscount">
-                                Stage-based Discount (%)
-                              </Label>
-                              <Input
-                                id="stageBasedDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.stageBasedDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "stageBasedDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5"
-                              />
+                        {formData.developmentStage ===
+                        "Before Development" ? (
+                          <div className="p-4 bg-muted rounded-lg">
+                            <h4 className="text-sm font-medium mb-1">
+                              Pre-Development Discounts
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Incentives that apply while the asset is still
+                              being built
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                              {formData.type === "Off Plan" && (
+                                <div>
+                                  <Label htmlFor="offPlanDiscount">
+                                    Off-plan Discount (%)
+                                  </Label>
+                                  <Input
+                                    id="offPlanDiscount"
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.offPlanDiscount}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "offPlanDiscount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="10"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Early-bird price for pre-completion sales
+                                  </p>
+                                </div>
+                              )}
+                              {(formData.type === "Off Plan" ||
+                                formData.type === "Under Construction") && (
+                                <div>
+                                  <Label htmlFor="stageBasedDiscount">
+                                    Stage-based Discount (%)
+                                  </Label>
+                                  <Input
+                                    id="stageBasedDiscount"
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.stageBasedDiscount}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "stageBasedDiscount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="5"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Reward for buying at an earlier build stage
+                                  </p>
+                                </div>
+                              )}
+                              {formData.type === "Land" && (
+                                <div className="col-span-2 p-3 bg-background rounded border text-xs text-muted-foreground">
+                                  Land parcels are priced per sqm / plot —
+                                  volume and deal-level discounts are agreed
+                                  case by case.
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-4 bg-muted rounded-lg">
+                            <h4 className="text-sm font-medium mb-1">
+                              Market Pricing
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              Post-development assets are priced against
+                              verified market value — off-plan and
+                              construction-stage discounts do not apply.
+                            </p>
+                          </div>
+                        )}
 
                         <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                           <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
@@ -1720,12 +2108,11 @@ export function AssetManagement() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Quarterly">
-                                  Quarterly
-                                </SelectItem>
-                                <SelectItem value="Annual">Annual</SelectItem>
-                                <SelectItem value="N/A">N/A</SelectItem>
+                                {rentalFrequencies.map((freq) => (
+                                  <SelectItem key={freq} value={freq}>
+                                    {freq}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -1954,11 +2341,9 @@ export function AssetManagement() {
                     {/* Step 6: Risk & Transparency */}
                     {currentStep === 6 && (
                       <div className="space-y-4">
-                        {/* Construction Progress - shown only for ongoing construction, not for Land type */}
-                        {formData.type !== "Land" &&
-                          formData.projectStatus &&
-                          formData.projectStatus !== "Completed" &&
-                          formData.projectStatus !== "Available" && (
+                        {/* Construction Progress — pre-development builds only, never for raw land */}
+                        {formData.developmentStage === "Before Development" &&
+                          formData.type !== "Land" && (
                             <div>
                               <Label htmlFor="constructionProgress">
                                 Construction Progress (%)
@@ -2021,14 +2406,7 @@ export function AssetManagement() {
                           </div>
 
                           <div className="space-y-2">
-                            {[
-                              "Construction timeline risk (if applicable)",
-                              "Market volatility in property sector",
-                              "Rental income may vary based on occupancy",
-                              "Regulatory and economic factors",
-                              "Currency fluctuation risk",
-                              "Developer financial stability",
-                            ].map((factor) => (
+                            {presetRiskFactors.map((factor) => (
                               <div
                                 key={factor}
                                 className="flex items-start space-x-2"
@@ -2092,15 +2470,7 @@ export function AssetManagement() {
 
                           {/* Display selected custom risk factors */}
                           {formData.riskFactors.filter(
-                            (f) =>
-                              ![
-                                "Construction timeline risk (if applicable)",
-                                "Market volatility in property sector",
-                                "Rental income may vary based on occupancy",
-                                "Regulatory and economic factors",
-                                "Currency fluctuation risk",
-                                "Developer financial stability",
-                              ].includes(f),
+                            (f) => !presetRiskFactors.includes(f),
                           ).length > 0 && (
                             <div>
                               <Label className="text-xs mb-2 block">
@@ -2109,15 +2479,7 @@ export function AssetManagement() {
                               <div className="space-y-2">
                                 {formData.riskFactors
                                   .filter(
-                                    (f) =>
-                                      ![
-                                        "Construction timeline risk (if applicable)",
-                                        "Market volatility in property sector",
-                                        "Rental income may vary based on occupancy",
-                                        "Regulatory and economic factors",
-                                        "Currency fluctuation risk",
-                                        "Developer financial stability",
-                                      ].includes(f),
+                                    (f) => !presetRiskFactors.includes(f),
                                   )
                                   .map((factor) => (
                                     <div
@@ -2202,8 +2564,8 @@ export function AssetManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="BuyOps-managed">
-                                BuyOps-managed
+                              <SelectItem value={`${formData.platform}-managed`}>
+                                {formData.platform}-managed
                               </SelectItem>
                               <SelectItem value="Self-managed">
                                 Self-managed
@@ -2485,6 +2847,37 @@ export function AssetManagement() {
                               </span>
                               <Badge variant="outline">
                                 {formData.type.toUpperCase() || "—"}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Development Stage:
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  formData.developmentStage ===
+                                  "Before Development"
+                                    ? "border-amber-500 text-amber-600 bg-amber-50"
+                                    : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                                }
+                              >
+                                {formData.developmentStage}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Investment Program:
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  isHarbor
+                                    ? "border-purple-500 text-purple-600 bg-purple-50"
+                                    : "border-blue-500 text-blue-600 bg-blue-50"
+                                }
+                              >
+                                {formData.platform}
                               </Badge>
                             </div>
                             <div className="flex justify-between items-start">
@@ -3093,7 +3486,7 @@ export function AssetManagement() {
                         : currentStep === 2
                           ? "Physical Details & Facilities"
                           : currentStep === 3
-                            ? "Investment Structure"
+                            ? "Investment Program & Structure"
                             : currentStep === 4
                               ? "Pricing Logic"
                               : currentStep === 5
@@ -3106,6 +3499,28 @@ export function AssetManagement() {
                                       ? "Commission Setup"
                                       : "Review & Publish"}
                     </DialogDescription>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge
+                        variant="outline"
+                        className={
+                          formData.developmentStage === "Before Development"
+                            ? "border-amber-500 text-amber-600 bg-amber-50"
+                            : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                        }
+                      >
+                        {formData.developmentStage}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={
+                          isHarbor
+                            ? "border-purple-500 text-purple-600 bg-purple-50"
+                            : "border-blue-500 text-blue-600 bg-blue-50"
+                        }
+                      >
+                        {formData.platform}
+                      </Badge>
+                    </div>
                   </DialogHeader>
 
                   {/* Use the same form steps - content is identical to create dialog */}
@@ -3116,6 +3531,90 @@ export function AssetManagement() {
                     {/* Step 1: Asset Identity & Status */}
                     {currentStep === 1 && (
                       <div className="space-y-4">
+                        {/* Development Stage — compact segmented toggle */}
+                        <div>
+                          <Label className="mb-2 block">
+                            Development Stage *
+                          </Label>
+                          <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+                            {STAGE_OPTIONS.map((stage) => {
+                              const selected =
+                                formData.developmentStage === stage.value;
+                              const Icon = stage.icon;
+                              return (
+                                <button
+                                  key={stage.value}
+                                  type="button"
+                                  onClick={() => handleStageChange(stage)}
+                                  className={`flex items-center gap-2.5 rounded-md px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                                    selected
+                                      ? "bg-background shadow-sm border border-border"
+                                      : "hover:bg-background/60 border border-transparent"
+                                  }`}
+                                >
+                                  <Icon
+                                    className={`h-4 w-4 shrink-0 ${
+                                      selected
+                                        ? isBeforeDev
+                                          ? "text-amber-600"
+                                          : "text-emerald-600"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  />
+                                  <div className="min-w-0">
+                                    <div
+                                      className={`text-sm font-medium ${
+                                        selected
+                                          ? ""
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      {stage.label}
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground truncate">
+                                      {stage.sub}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {/* Stage context — what this stage means */}
+                          <div
+                            className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2.5 ${
+                              isBeforeDev
+                                ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                                : "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p
+                                className={`text-xs leading-relaxed ${
+                                  isBeforeDev
+                                    ? "text-amber-900 dark:text-amber-100"
+                                    : "text-emerald-900 dark:text-emerald-100"
+                                }`}
+                              >
+                                {stageConfig.description}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {stageConfig.chips.map((chip) => (
+                                  <span
+                                    key={chip}
+                                    className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                                      isBeforeDev
+                                        ? "bg-amber-100/70 border-amber-300 text-amber-800 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-200"
+                                        : "bg-emerald-100/70 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-700 dark:text-emerald-200"
+                                    }`}
+                                  >
+                                    {chip}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="edit-name">Asset Name *</Label>
@@ -3156,18 +3655,18 @@ export function AssetManagement() {
                                 <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Land">Land</SelectItem>
-                                <SelectItem value="Off Plan">
-                                  Off Plan
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
+                                {stageTypes.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {t}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {isBeforeDev
+                                ? "Pre-development assets: land, off-plan units or active construction"
+                                : "Post-development assets: built and ready for occupation or use"}
+                            </p>
                           </div>
                           <div>
                             <Label htmlFor="edit-projectStatus">
@@ -3183,23 +3682,18 @@ export function AssetManagement() {
                                 <SelectValue placeholder="Select status" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Planning">
-                                  Planning
-                                </SelectItem>
-                                <SelectItem value="Foundation">
-                                  Foundation
-                                </SelectItem>
-                                <SelectItem value="Under Construction">
-                                  Under Construction
-                                </SelectItem>
-                                <SelectItem value="Completed">
-                                  Completed
-                                </SelectItem>
-                                <SelectItem value="Available">
-                                  Available
-                                </SelectItem>
+                                {stageStatuses.map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    {s}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {isBeforeDev
+                                ? "Where the project sits in the development pipeline"
+                                : "Sales / occupancy state of the completed asset"}
+                            </p>
                           </div>
                         </div>
 
@@ -3605,9 +4099,90 @@ export function AssetManagement() {
                       </div>
                     )}
 
-                    {/* Step 3: Investment Structure */}
+                    {/* Step 3: Investment Program & Structure */}
                     {currentStep === 3 && (
                       <div className="space-y-4">
+                        {/* Investment Program */}
+                        <div>
+                          <Label className="text-base font-semibold mb-1 block">
+                            Investment Program *
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Defines the kind of investment this asset carries —
+                            it shapes ownership structures, funding terms,
+                            returns and risk disclosure in the steps that
+                            follow.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {PROGRAM_OPTIONS.map((program) => {
+                              const selected =
+                                formData.platform === program.value;
+                              const Icon = program.icon;
+                              return (
+                                <div
+                                  key={program.value}
+                                  onClick={() =>
+                                    handleProgramChange(program.value)
+                                  }
+                                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    selected
+                                      ? program.value === "Urbco Harbor"
+                                        ? "border-purple-600 bg-purple-50/50 dark:bg-purple-950/20"
+                                        : "border-blue-600 bg-blue-50/50 dark:bg-blue-950/20"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 mb-1.5">
+                                    <div
+                                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                        program.value === "Urbco Harbor"
+                                          ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                                          : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                      }`}
+                                    >
+                                      <Icon className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-sm">
+                                        {program.value}
+                                      </h4>
+                                      <span
+                                        className={`text-xs font-medium ${
+                                          program.value === "Urbco Harbor"
+                                            ? "text-purple-600 dark:text-purple-400"
+                                            : "text-blue-600 dark:text-blue-400"
+                                        }`}
+                                      >
+                                        {program.tag}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {program.description}
+                                  </p>
+                                  <ul className="mt-2 space-y-0.5">
+                                    {program.bullets.map((b) => (
+                                      <li
+                                        key={b}
+                                        className="text-[11px] text-muted-foreground flex items-center gap-1.5"
+                                      >
+                                        <span
+                                          className={`w-1 h-1 rounded-full shrink-0 ${
+                                            program.value === "Urbco Harbor"
+                                              ? "bg-purple-500"
+                                              : "bg-blue-500"
+                                          }`}
+                                        />
+                                        {b}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <div>
                           <Label>Ownership Options *</Label>
                           <div className="grid grid-cols-2 gap-3 mt-2">
@@ -3623,7 +4198,9 @@ export function AssetManagement() {
                             >
                               <h4 className="font-medium">Full Ownership</h4>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Single owner purchases entire asset
+                                {isHarbor
+                                  ? "Whole-asset acquisition by a single institutional buyer"
+                                  : "Single owner purchases entire asset"}
                               </p>
                             </div>
                             <div
@@ -3640,11 +4217,88 @@ export function AssetManagement() {
                                 Fractional Ownership
                               </h4>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Multiple investors own fractions
+                                {isHarbor
+                                  ? "Large fractional blocks sized for institutional commitments"
+                                  : "Multiple investors own fractions"}
                               </p>
                             </div>
                           </div>
                         </div>
+
+                        {/* edit-Harbor — large-ticket funding parameters */}
+                        {isHarbor && (
+                          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                                Large-Ticket Funding Parameters
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Urbco Harbor structures stationary funding for
+                                exceptionally large investments.
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="edit-targetFunding">
+                                  Total Funding Required (₦)
+                                </Label>
+                                <Input
+                                  id="edit-targetFunding"
+                                  type="number"
+                                  value={formData.targetFunding}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "targetFunding",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="50000000000"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-minimumInvestment">
+                                  Minimum Investment (₦)
+                                </Label>
+                                <Input
+                                  id="edit-minimumInvestment"
+                                  type="number"
+                                  value={formData.minimumInvestment}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "minimumInvestment",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="10000000"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="edit-investmentType">
+                                Investment Instrument
+                              </Label>
+                              <Select
+                                value={formData.investmentType}
+                                onValueChange={(val) =>
+                                  updateFormData("investmentType", val)
+                                }
+                              >
+                                <SelectTrigger id="edit-investmentType">
+                                  <SelectValue placeholder="Select instrument" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Equity">
+                                    Equity
+                                  </SelectItem>
+                                  <SelectItem value="Debt">Debt</SelectItem>
+                                  <SelectItem value="Mezzanine">
+                                    Mezzanine
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
 
                         {formData.ownershipType === "Fractional" && (
                           <>
@@ -3933,14 +4587,7 @@ export function AssetManagement() {
                                 Allowed Payment Periods *
                               </Label>
                               <div className="grid grid-cols-2 gap-2">
-                                {[
-                                  "3 months",
-                                  "6 months",
-                                  "12 months",
-                                  "18 months",
-                                  "24 months",
-                                  "36 months",
-                                ].map((period) => (
+                                {paymentPeriods.map((period) => (
                                   <div
                                     key={period}
                                     className="flex items-center space-x-2"
@@ -3967,49 +4614,85 @@ export function AssetManagement() {
                           </div>
                         )}
 
-                        <div className="p-4 bg-muted rounded-lg">
-                          <h4 className="text-sm font-medium mb-3">
-                            Discount Configuration
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="offPlanDiscount">
-                                Off-plan Discount (%)
-                              </Label>
-                              <Input
-                                id="offPlanDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.offPlanDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "offPlanDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="10"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="stageBasedDiscount">
-                                Stage-based Discount (%)
-                              </Label>
-                              <Input
-                                id="stageBasedDiscount"
-                                type="number"
-                                step="0.1"
-                                value={formData.stageBasedDiscount}
-                                onChange={(e) =>
-                                  updateFormData(
-                                    "stageBasedDiscount",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="5"
-                              />
+                        {formData.developmentStage ===
+                        "Before Development" ? (
+                          <div className="p-4 bg-muted rounded-lg">
+                            <h4 className="text-sm font-medium mb-1">
+                              Pre-Development Discounts
+                            </h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Incentives that apply while the asset is still
+                              being built
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                              {formData.type === "Off Plan" && (
+                                <div>
+                                  <Label htmlFor="offPlanDiscount">
+                                    Off-plan Discount (%)
+                                  </Label>
+                                  <Input
+                                    id="offPlanDiscount"
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.offPlanDiscount}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "offPlanDiscount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="10"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Early-bird price for pre-completion sales
+                                  </p>
+                                </div>
+                              )}
+                              {(formData.type === "Off Plan" ||
+                                formData.type === "Under Construction") && (
+                                <div>
+                                  <Label htmlFor="stageBasedDiscount">
+                                    Stage-based Discount (%)
+                                  </Label>
+                                  <Input
+                                    id="stageBasedDiscount"
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.stageBasedDiscount}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "stageBasedDiscount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="5"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Reward for buying at an earlier build stage
+                                  </p>
+                                </div>
+                              )}
+                              {formData.type === "Land" && (
+                                <div className="col-span-2 p-3 bg-background rounded border text-xs text-muted-foreground">
+                                  Land parcels are priced per sqm / plot —
+                                  volume and deal-level discounts are agreed
+                                  case by case.
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-4 bg-muted rounded-lg">
+                            <h4 className="text-sm font-medium mb-1">
+                              Market Pricing
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              Post-development assets are priced against
+                              verified market value — off-plan and
+                              construction-stage discounts do not apply.
+                            </p>
+                          </div>
+                        )}
 
                         <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                           <CircleCheck className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
@@ -4057,12 +4740,11 @@ export function AssetManagement() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Quarterly">
-                                  Quarterly
-                                </SelectItem>
-                                <SelectItem value="Annual">Annual</SelectItem>
-                                <SelectItem value="N/A">N/A</SelectItem>
+                                {rentalFrequencies.map((freq) => (
+                                  <SelectItem key={freq} value={freq}>
+                                    {freq}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -4290,11 +4972,8 @@ export function AssetManagement() {
                     {/* Step 6: Risk & Transparency */}
                     {currentStep === 6 && (
                       <div className="space-y-4">
-                        {formData.type !== "Land" &&
-                          formData.type !== "Completed" &&
-                          formData.projectStatus &&
-                          formData.projectStatus !== "Completed" &&
-                          formData.projectStatus !== "Available" && (
+                        {formData.developmentStage === "Before Development" &&
+                          formData.type !== "Land" && (
                             <div>
                               <Label htmlFor="constructionProgress">
                                 Construction Progress (%)
@@ -4356,14 +5035,7 @@ export function AssetManagement() {
                           </div>
 
                           <div className="space-y-2">
-                            {[
-                              "Construction timeline risk (if applicable)",
-                              "Market volatility in property sector",
-                              "Rental income may vary based on occupancy",
-                              "Regulatory and economic factors",
-                              "Currency fluctuation risk",
-                              "Developer financial stability",
-                            ].map((factor) => (
+                            {presetRiskFactors.map((factor) => (
                               <div
                                 key={factor}
                                 className="flex items-start space-x-2"
@@ -4425,15 +5097,7 @@ export function AssetManagement() {
                           </div>
 
                           {formData.riskFactors.filter(
-                            (f) =>
-                              ![
-                                "Construction timeline risk (if applicable)",
-                                "Market volatility in property sector",
-                                "Rental income may vary based on occupancy",
-                                "Regulatory and economic factors",
-                                "Currency fluctuation risk",
-                                "Developer financial stability",
-                              ].includes(f),
+                            (f) => !presetRiskFactors.includes(f),
                           ).length > 0 && (
                             <div>
                               <Label className="text-xs mb-2 block">
@@ -4442,15 +5106,7 @@ export function AssetManagement() {
                               <div className="space-y-2">
                                 {formData.riskFactors
                                   .filter(
-                                    (f) =>
-                                      ![
-                                        "Construction timeline risk (if applicable)",
-                                        "Market volatility in property sector",
-                                        "Rental income may vary based on occupancy",
-                                        "Regulatory and economic factors",
-                                        "Currency fluctuation risk",
-                                        "Developer financial stability",
-                                      ].includes(f),
+                                    (f) => !presetRiskFactors.includes(f),
                                   )
                                   .map((factor) => (
                                     <div
@@ -4535,8 +5191,8 @@ export function AssetManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="BuyOps-managed">
-                                BuyOps-managed
+                              <SelectItem value={`${formData.platform}-managed`}>
+                                {formData.platform}-managed
                               </SelectItem>
                               <SelectItem value="Self-managed">
                                 Self-managed
@@ -4818,6 +5474,37 @@ export function AssetManagement() {
                               </span>
                               <Badge variant="outline">
                                 {formData.type?.toUpperCase() || "—"}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Development Stage:
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  formData.developmentStage ===
+                                  "Before Development"
+                                    ? "border-amber-500 text-amber-600 bg-amber-50"
+                                    : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                                }
+                              >
+                                {formData.developmentStage}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Investment Program:
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  isHarbor
+                                    ? "border-purple-500 text-purple-600 bg-purple-50"
+                                    : "border-blue-500 text-blue-600 bg-blue-50"
+                                }
+                              >
+                                {formData.platform}
                               </Badge>
                             </div>
                             <div className="flex justify-between items-start">
