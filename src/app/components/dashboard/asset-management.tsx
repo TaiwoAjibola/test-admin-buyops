@@ -21,6 +21,7 @@ import {
   Upload,
   User,
   Users,
+  Video,
   X,
   ChevronLeft,
   ChevronRight,
@@ -61,6 +62,7 @@ import {
 } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
 import { Progress } from "../ui/progress";
+import { Switch } from "../ui/switch";
 import { toast } from "sonner";
 import { useEffect, useState, useRef } from "react";
 import { assetsApi, companiesApi } from "../../../utils/api-service";
