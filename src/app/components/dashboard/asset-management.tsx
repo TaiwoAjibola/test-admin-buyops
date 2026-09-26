@@ -4,10 +4,12 @@ import {
   CheckCircle2,
   CircleAlert,
   CircleCheck,
+  Coins,
   Download,
   Eye,
   FileText,
   Filter,
+  Home,
   Image as ImageIcon,
   Layers,
   MapPin,
@@ -142,18 +144,28 @@ export function AssetManagement() {
     furnishingStatus: "Unfurnished",
     sharedFacilities: [] as string[],
     facilityManagement: true,
-    ownershipType: "Full", // "Full" | "Fractional"
+    ownershipType: "Full", // "Full" = Single-ticket interest | "Fractional" (Interest Structure under Investment path)
     fractionTotal: "",
     costPerFraction: "",
     landUnitType: "",
     landUnitCount: "",
+
+    // Buying Paths — UML §1 Buy-In (Investment | Ownership)
+    buyingPaths: [] as string[], // ("Investment" | "Ownership")[]
+    investmentWindowStart: "",
+    investmentWindowEnd: "",
+    investorRights: "",
+    redemptionTerms: "",
+    releaseBasis: "Scheduled", // "Milestone-linked" | "Scheduled"
+    milestones: [] as { name: string; targetDate: string; releasePct: string }[],
+    titleTerms: "",
 
     // Financial Configuration
     basePrice: "",
     preDevCost: "",
     estimatedDevCost: "",
     markup: "",
-    paymentOptions: ["Outright", "Installment"] as string[],
+    paymentOptions: ["One-time"] as string[],
     installmentPeriods: ["6 months", "12 months", "24 months"] as string[],
     downPaymentAmount: "",
     offPlanDiscount: "",
@@ -554,6 +566,95 @@ export function AssetManagement() {
     toast.info(`${program} selected — funding terms and returns adjusted`);
   };
 
+  // Buying Paths — UML §1 Buy-In (Investment | Ownership)
+  const BUYING_PATH_OPTIONS = [
+    {
+      value: "Investment",
+      icon: Coins,
+      blurb: "Acquirer receives a financial interest in the project / asset.",
+      payment:
+        "One-time payment, or funding within an agreed investment window — not linked to construction milestones.",
+      terms:
+        "Amount · Structure · Window · Expected returns · Investor rights · Exit / redemption",
+    },
+    {
+      value: "Ownership",
+      icon: Home,
+      blurb: "Buyer acquires ownership or entitlement to a specific property / unit.",
+      payment:
+        "One-time payment, scheduled tranches or milestone-based payments.",
+      terms:
+        "Purchase price · Unit · Payment plan · Tranche schedule · Milestones · Title terms",
+    },
+  ];
+
+  const PAYMENT_OPTION_DESCRIPTIONS: Record<string, string> = {
+    "One-time": "Full payment settled in a single transaction",
+    "Investment Window": "Funded any time within the agreed investment window",
+    "Scheduled Tranche": "Split across a fixed tranche schedule",
+    "Milestone-based": "Each tranche released against a verified milestone",
+  };
+
+  const investmentPaymentOptions = ["One-time", "Investment Window"];
+  const ownershipPaymentOptions = ["One-time", "Scheduled Tranche", "Milestone-based"];
+
+  const prunePaymentOptions = (options: string[], buyingPaths: string[]) => {
+    const allowed = new Set<string>([
+      ...(buyingPaths.includes("Investment") ? investmentPaymentOptions : []),
+      ...(buyingPaths.includes("Ownership") ? ownershipPaymentOptions : []),
+    ]);
+    const kept = options.filter((o) => allowed.has(o));
+    if (buyingPaths.length === 0) return [];
+    return kept.length > 0 ? kept : ["One-time"];
+  };
+
+  const handlePathToggle = (path: string) => {
+    setFormData((prev) => {
+      const buyingPaths = prev.buyingPaths.includes(path)
+        ? prev.buyingPaths.filter((p) => p !== path)
+        : [...prev.buyingPaths, path];
+      return {
+        ...prev,
+        buyingPaths,
+        paymentOptions: prunePaymentOptions(prev.paymentOptions, buyingPaths),
+      };
+    });
+  };
+
+  const addMilestone = () =>
+    setFormData((prev) => ({
+      ...prev,
+      milestones: [...prev.milestones, { name: "", targetDate: "", releasePct: "" }],
+    }));
+
+  const updateMilestone = (index: number, field: "name" | "targetDate" | "releasePct", value: string) =>
+    setFormData((prev) => ({
+      ...prev,
+      milestones: prev.milestones.map((m, i) => (i === index ? { ...m, [field]: value } : m)),
+    }));
+
+  const removeMilestone = (index: number) =>
+    setFormData((prev) => ({
+      ...prev,
+      milestones: prev.milestones.filter((_, i) => i !== index),
+    }));
+
+  const milestoneReleaseTotal = formData.milestones.reduce(
+    (sum, m) => sum + (parseFloat(m.releasePct) || 0),
+    0,
+  );
+
+  const normalizePaymentOptions = (options: string[] | undefined, buyingPaths: string[]) => {
+    const legacyMap: Record<string, string> = {
+      Outright: "One-time",
+      Full: "One-time",
+      Installment: "Scheduled Tranche",
+      "Stage-based": "Milestone-based",
+    };
+    const mapped = (options?.length ? options : ["One-time"]).map((o) => legacyMap[o] || o);
+    return prunePaymentOptions(mapped, buyingPaths);
+  };
+
   // Step Navigation & Validation
   const validateStep1 = () => {
     if (!formData.name.trim()) {
@@ -583,8 +684,25 @@ export function AssetManagement() {
     return true;
   };
 
+  const validateStep3 = () => {
+    if (formData.buyingPaths.length === 0) {
+      toast.error("Select at least one Buying Path — Investment or Ownership");
+      return false;
+    }
+    if (
+      formData.buyingPaths.includes("Ownership") &&
+      formData.releaseBasis === "Milestone-linked" &&
+      formData.milestones.filter((m) => m.name.trim() && m.releasePct).length === 0
+    ) {
+      toast.error("Add at least one milestone — Ownership payments are milestone-linked");
+      return false;
+    }
+    return true;
+  };
+
   const nextStep = () => {
     if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep === 3 && !validateStep3()) return;
     if (currentStep < totalSteps) setCurrentStep((prev) => prev + 1);
   };
 
@@ -660,6 +778,13 @@ export function AssetManagement() {
     setSelectedAssetId(assetId);
     const asset = assets.find((a) => a.id === assetId);
     if (asset) {
+      // Legacy assets carry no buyingPaths — derive from interest structure
+      const assetBuyingPaths: string[] =
+        ((asset as any).buyingPaths as string[] | undefined)?.length
+          ? ((asset as any).buyingPaths as string[])
+          : asset.ownershipType === "Fractional"
+            ? ["Investment"]
+            : ["Ownership"];
       setFormData({
         ...INITIAL_FORM_DATA,
         name: asset.name || "",
@@ -687,11 +812,21 @@ export function AssetManagement() {
         ownershipType: asset.ownershipType || "Full",
         fractionTotal: asset.fractionTotal?.toString() || "",
         costPerFraction: asset.fractionCost?.toString() || "",
+        buyingPaths: assetBuyingPaths,
+        investmentWindowStart:
+          (asset as any).investmentWindowStart || "",
+        investmentWindowEnd: (asset as any).investmentWindowEnd || "",
+        investorRights: (asset as any).investorRights || "",
+        redemptionTerms: (asset as any).redemptionTerms || "",
+        releaseBasis: (asset as any).releaseBasis || "Scheduled",
+        milestones: (asset as any).milestones || [],
+        titleTerms: (asset as any).titleTerms || "",
         basePrice: asset.price?.toString() || "",
         markup: asset.markup?.toString() || "",
-        paymentOptions:
-          (asset.paymentOptions as string[] | undefined) ||
-          INITIAL_FORM_DATA.paymentOptions,
+        paymentOptions: normalizePaymentOptions(
+          asset.paymentOptions as string[] | undefined,
+          assetBuyingPaths,
+        ),
         installmentPeriods:
           (asset.installmentPeriods as string[] | undefined) ||
           INITIAL_FORM_DATA.installmentPeriods,
@@ -846,7 +981,7 @@ export function AssetManagement() {
                             : currentStep === 2
                               ? "Physical Details & Facilities"
                               : currentStep === 3
-                                ? "Investment Program & Structure"
+                                ? "Investment Program & Buying Paths"
                                 : currentStep === 4
                                   ? "Pricing Logic"
                                   : currentStep === 5
@@ -1468,7 +1603,7 @@ export function AssetManagement() {
                       </div>
                     )}
 
-                    {/* Step 3: Investment Program & Structure */}
+                    {/* Step 3: Investment Program & Buying Paths */}
                     {currentStep === 3 && (
                       <div className="space-y-4">
                         {/* Investment Program */}
@@ -1478,7 +1613,7 @@ export function AssetManagement() {
                           </Label>
                           <p className="text-xs text-muted-foreground mb-2">
                             Defines the kind of investment this asset carries —
-                            it shapes ownership structures, funding terms,
+                            it shapes funding terms, interest structure,
                             returns and risk disclosure in the steps that
                             follow.
                           </p>
@@ -1553,76 +1688,265 @@ export function AssetManagement() {
                         </div>
 
                         <div>
-                          <Label>Ownership Options *</Label>
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Full")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Full"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">Full Ownership</h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {isHarbor
-                                  ? "Whole-asset acquisition by a single institutional buyer"
-                                  : "Single owner purchases entire asset"}
-                              </p>
-                            </div>
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Fractional")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Fractional"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">
-                                Fractional Ownership
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {isHarbor
-                                  ? "Large fractional blocks sized for institutional commitments"
-                                  : "Multiple investors own fractions"}
-                              </p>
-                            </div>
+                          <Label className="text-base font-semibold mb-1 block">
+                            Buying Paths *
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            UML §1 Buy-In — choose how buyers may acquire this
+                            asset. Enable one or both paths; each path carries
+                            its own terms, payment options and fund-release
+                            rules in the steps that follow.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {BUYING_PATH_OPTIONS.map((path) => {
+                              const selected = formData.buyingPaths.includes(
+                                path.value,
+                              );
+                              const PathIcon = path.icon;
+                              return (
+                                <div
+                                  key={path.value}
+                                  onClick={() => handlePathToggle(path.value)}
+                                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    selected
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                          selected
+                                            ? "bg-primary/10 text-primary"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        <PathIcon className="h-4 w-4" />
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold text-sm">
+                                          {path.value}
+                                        </h4>
+                                        <span
+                                          className={`text-[11px] font-medium ${
+                                            selected
+                                              ? "text-primary"
+                                              : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {selected
+                                            ? "Enabled"
+                                            : "Click to enable"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                                        selected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-muted-foreground"
+                                      }`}
+                                    >
+                                      {selected && (
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {path.blurb}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                                    <span className="font-medium text-foreground/80">
+                                      Payment:
+                                    </span>{" "}
+                                    {path.payment}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                                    <span className="font-medium text-foreground/80">
+                                      Terms:
+                                    </span>{" "}
+                                    {path.terms}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
+                          {formData.buyingPaths.length === 0 && (
+                            <p className="text-xs text-destructive mt-1.5">
+                              Select at least one Buying Path to continue.
+                            </p>
+                          )}
                         </div>
 
-                        {/* Harbor — large-ticket funding parameters */}
-                        {isHarbor && (
-                          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-4">
-                            <div>
-                              <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                                Large-Ticket Funding Parameters
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Urbco Harbor structures stationary funding for
-                                exceptionally large investments.
+                        {/* Settlement flow strip — UML §§2-7 (read-only model) */}
+                        {formData.buyingPaths.includes("Investment") && (
+                          <div className="p-3 bg-muted rounded-lg space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-xs font-medium">
+                                Investment settlement flow
                               </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="targetFunding">
-                                  Total Funding Required (₦)
-                                </Label>
-                                <Input
-                                  id="targetFunding"
-                                  type="number"
-                                  value={formData.targetFunding}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "targetFunding",
-                                      e.target.value,
-                                    )
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                "Terms reviewed",
+                                "Payment instruction",
+                                "Trustee custody",
+                                "Independent reconciliation",
+                                "Fund release",
+                              ].map((step, index, arr) => (
+                                <span
+                                  key={step}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <span className="px-2 py-0.5 bg-background border rounded-full text-[11px] text-muted-foreground">
+                                    {index + 1}. {step}
+                                  </span>
+                                  {index < arr.length - 1 && (
+                                    <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              The trustee holds funds until reconciliation
+                              clears; releases follow the agreed exit /
+                              redemption terms below.
+                            </p>
+                          </div>
+                        )}
+                        {formData.buyingPaths.includes("Ownership") && (
+                          <div className="p-3 bg-muted rounded-lg space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-xs font-medium">
+                                Ownership settlement flow
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                "Terms reviewed",
+                                "Payment instruction",
+                                "Trustee custody",
+                                "Independent reconciliation",
+                                formData.releaseBasis === "Milestone-linked"
+                                  ? "Milestone release"
+                                  : "Scheduled release",
+                              ].map((step, index, arr) => (
+                                <span
+                                  key={step}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <span className="px-2 py-0.5 bg-background border rounded-full text-[11px] text-muted-foreground">
+                                    {index + 1}. {step}
+                                  </span>
+                                  {index < arr.length - 1 && (
+                                    <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Release is{" "}
+                              {formData.releaseBasis === "Milestone-linked"
+                                ? "unlocked per verified milestone"
+                                : "made against the fixed tranche schedule"}{" "}
+                              — configured below.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Investment path — UML "Review Investment Terms" */}
+                        {formData.buyingPaths.includes("Investment") && (
+                          <div className="p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                Investment Terms
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Financial interest in the project — payments
+                                settle one-time or within the window, not by
+                                construction milestone.
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label>Interest Structure *</Label>
+                              <div className="grid grid-cols-2 gap-3 mt-2">
+                                <div
+                                  onClick={() =>
+                                    updateFormData("ownershipType", "Full")
                                   }
-                                  placeholder="50000000000"
-                                />
+                                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                    formData.ownershipType === "Full"
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <h4 className="font-medium text-sm">
+                                    Single-ticket Interest
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {isHarbor
+                                      ? "Whole-asset interest placed with a single institutional acquirer"
+                                      : "One investor takes the full interest"}
+                                  </p>
+                                </div>
+                                <div
+                                  onClick={() =>
+                                    updateFormData("ownershipType", "Fractional")
+                                  }
+                                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                    formData.ownershipType === "Fractional"
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <h4 className="font-medium text-sm">
+                                    Fractional Interests
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {isHarbor
+                                      ? "Large fractional blocks sized for institutional commitments"
+                                      : "The interest is split into tradable fractions"}
+                                  </p>
+                                </div>
+                              </div>
+                              {formData.ownershipType === "Full" && (
+                                <p className="text-xs text-muted-foreground mt-1.5">
+                                  Single-ticket interest — sold as one whole
+                                  interest to a single acquirer.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label htmlFor="investmentType">
+                                  Investment Instrument
+                                </Label>
+                                <Select
+                                  value={formData.investmentType}
+                                  onValueChange={(val) =>
+                                    updateFormData("investmentType", val)
+                                  }
+                                >
+                                  <SelectTrigger id="investmentType">
+                                    <SelectValue placeholder="Select instrument" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Equity">
+                                      Equity
+                                    </SelectItem>
+                                    <SelectItem value="Debt">
+                                      Debt
+                                    </SelectItem>
+                                    <SelectItem value="Mezzanine">
+                                      Mezzanine
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div>
                                 <Label htmlFor="minimumInvestment">
@@ -1641,35 +1965,111 @@ export function AssetManagement() {
                                   placeholder="10000000"
                                 />
                               </div>
+                              <div>
+                                <Label htmlFor="targetFunding">
+                                  Total Funding Required (₦)
+                                </Label>
+                                <Input
+                                  id="targetFunding"
+                                  type="number"
+                                  value={formData.targetFunding}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "targetFunding",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="50000000000"
+                                />
+                              </div>
                             </div>
+
                             <div>
-                              <Label htmlFor="investmentType">
-                                Investment Instrument
+                              <Label className="text-sm font-medium">
+                                Investment Window
                               </Label>
-                              <Select
-                                value={formData.investmentType}
-                                onValueChange={(val) =>
-                                  updateFormData("investmentType", val)
-                                }
-                              >
-                                <SelectTrigger id="investmentType">
-                                  <SelectValue placeholder="Select instrument" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Equity">
-                                    Equity
-                                  </SelectItem>
-                                  <SelectItem value="Debt">Debt</SelectItem>
-                                  <SelectItem value="Mezzanine">
-                                    Mezzanine
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1.5">
+                                <div>
+                                  <Label htmlFor="investmentWindowStart" className="text-xs">
+                                    Window Opens
+                                  </Label>
+                                  <Input
+                                    id="investmentWindowStart"
+                                    type="date"
+                                    value={formData.investmentWindowStart}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "investmentWindowStart",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="investmentWindowEnd" className="text-xs">
+                                    Window Closes
+                                  </Label>
+                                  <Input
+                                    id="investmentWindowEnd"
+                                    type="date"
+                                    value={formData.investmentWindowEnd}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "investmentWindowEnd",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Optional agreed period during which
+                                &ldquo;Investment Window&rdquo; payments may
+                                settle (referenced in Step 4).
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="investorRights">
+                                  Investor Rights
+                                </Label>
+                                <Textarea
+                                  id="investorRights"
+                                  value={formData.investorRights}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "investorRights",
+                                      e.target.value,
+                                    )
+                                  }
+                                  rows={3}
+                                  placeholder="e.g. Pro-rata voting rights, quarterly reporting, information rights…"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="redemptionTerms">
+                                  Exit / Redemption Terms
+                                </Label>
+                                <Textarea
+                                  id="redemptionTerms"
+                                  value={formData.redemptionTerms}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "redemptionTerms",
+                                      e.target.value,
+                                    )
+                                  }
+                                  rows={3}
+                                  placeholder="e.g. 30-day redemption notice after a 12-month holding period…"
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
 
-                        {formData.ownershipType === "Fractional" && (
+                        {formData.buyingPaths.includes("Investment") &&
+                          formData.ownershipType === "Fractional" && (
                           <>
                             <div className="p-4 bg-accent/10 border border-accent rounded-lg">
                               <h4 className="text-sm font-medium text-accent mb-3">
@@ -1781,12 +2181,241 @@ export function AssetManagement() {
                           </>
                         )}
 
-                        {formData.ownershipType === "Full" && (
-                          <div className="p-4 bg-muted rounded-lg text-center">
-                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Full ownership selected. Asset will be sold as a
-                              single unit.
+                        {/* Ownership path — UML "Review Ownership Terms" */}
+                        {formData.buyingPaths.includes("Ownership") && (
+                          <div className="p-4 border border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-950/20 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-green-700 dark:text-green-300">
+                                Ownership Terms
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Entitlement to the property / unit — how payment
+                                is made determines how funds are released (UML
+                                §2, §4B).
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="text-sm font-medium">
+                                Payment Release Basis *
+                              </Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                {[
+                                  {
+                                    value: "Milestone-linked",
+                                    title: "Milestone-linked",
+                                    desc: "Trustee releases funds only after an independent monitor verifies each completed milestone (UML §4B / §7).",
+                                  },
+                                  {
+                                    value: "Scheduled",
+                                    title: "Scheduled tranche",
+                                    desc: "Funds release against the fixed tranche schedule configured in Step 4.",
+                                  },
+                                ].map((basis) => {
+                                  const selected =
+                                    formData.releaseBasis === basis.value;
+                                  return (
+                                    <div
+                                      key={basis.value}
+                                      onClick={() =>
+                                        updateFormData(
+                                          "releaseBasis",
+                                          basis.value,
+                                        )
+                                      }
+                                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                        selected
+                                          ? "border-primary bg-primary/5"
+                                          : "border-border hover:border-muted-foreground"
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="font-medium text-sm">
+                                          {basis.title}
+                                        </h5>
+                                        <div
+                                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                            selected
+                                              ? "border-primary"
+                                              : "border-muted-foreground"
+                                          }`}
+                                        >
+                                          {selected && (
+                                            <div className="w-2 h-2 rounded-full bg-primary" />
+                                          )}
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {basis.desc}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <Label className="text-sm font-medium">
+                                  Milestone Schedule
+                                  {formData.releaseBasis === "Milestone-linked"
+                                    ? " *"
+                                    : ""}
+                                </Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addMilestone}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  Add Milestone
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Every release is gated on the trustee confirming
+                                an independent monitor has flagged the milestone
+                                complete — the next tranche funds only then.
+                              </p>
+                              {formData.milestones.length === 0 ? (
+                                <p className="text-xs text-muted-foreground border border-dashed rounded-lg p-3 text-center">
+                                  No milestones yet — add one for each funding
+                                  stage that should unlock release.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {formData.milestones.map(
+                                    (milestone, index) => (
+                                      <div
+                                        key={index}
+                                        className="grid grid-cols-12 gap-2 items-end p-2 bg-muted rounded-lg"
+                                      >
+                                        <div className="col-span-12 md:col-span-5">
+                                          <Label
+                                            htmlFor={`milestone-name-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Milestone *
+                                          </Label>
+                                          <Input
+                                            id={`milestone-name-${index}`}
+                                            value={milestone.name}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "name",
+                                                e.target.value,
+                                              )
+                                            }
+                                            placeholder="e.g. Foundation completed"
+                                          />
+                                        </div>
+                                        <div className="col-span-5 md:col-span-3">
+                                          <Label
+                                            htmlFor={`milestone-date-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Target Date
+                                          </Label>
+                                          <Input
+                                            id={`milestone-date-${index}`}
+                                            type="date"
+                                            value={milestone.targetDate}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "targetDate",
+                                                e.target.value,
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                        <div className="col-span-5 md:col-span-3">
+                                          <Label
+                                            htmlFor={`milestone-pct-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Release %
+                                          </Label>
+                                          <Input
+                                            id={`milestone-pct-${index}`}
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={milestone.releasePct}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "releasePct",
+                                                e.target.value,
+                                              )
+                                            }
+                                            placeholder="25"
+                                          />
+                                        </div>
+                                        <div className="col-span-2 md:col-span-1 flex md:justify-end">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-destructive hover:text-destructive"
+                                            onClick={() =>
+                                              removeMilestone(index)
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">
+                                              Remove milestone
+                                            </span>
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      Total released across milestones
+                                    </span>
+                                    <span
+                                      className={`font-semibold ${
+                                        milestoneReleaseTotal > 100
+                                          ? "text-destructive"
+                                          : milestoneReleaseTotal === 100
+                                            ? "text-accent"
+                                            : ""
+                                      }`}
+                                    >
+                                      {milestoneReleaseTotal}%
+                                    </span>
+                                  </div>
+                                  {milestoneReleaseTotal > 100 && (
+                                    <p className="text-xs text-destructive">
+                                      Milestone releases exceed 100% — adjust
+                                      before publishing.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="titleTerms">
+                                Ownership / Title Terms
+                              </Label>
+                              <Textarea
+                                id="titleTerms"
+                                value={formData.titleTerms}
+                                onChange={(e) =>
+                                  updateFormData("titleTerms", e.target.value)
+                                }
+                                rows={3}
+                                placeholder="e.g. Title deed transfers within 60 days of final payment; occupancy rights from handover…"
+                              />
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                              Purchase price and payment plan are configured in
+                              Step 4 · unit entitlement in Step 2.
                             </p>
                           </div>
                         )}
@@ -1896,39 +2525,126 @@ export function AssetManagement() {
                           <Label className="mb-3 block">
                             Payment Options *
                           </Label>
-                          <div className="space-y-2">
-                            {["Full", "Installment", "Stage-based"].map(
-                              (option) => (
-                                <div
-                                  key={option}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={option}
-                                    checked={formData.paymentOptions.includes(
-                                      option,
-                                    )}
-                                    onCheckedChange={() =>
-                                      togglePaymentOption(option)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={option}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {option} Payment
-                                  </label>
+                          {formData.buyingPaths.length === 0 ? (
+                            <p className="text-xs text-destructive">
+                              No Buying Path selected — choose one in Step 3 to
+                              configure payment.
+                            </p>
+                          ) : (
+                            <div className="space-y-4">
+                              {formData.buyingPaths.includes("Investment") && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <Coins className="h-3.5 w-3.5" />
+                                    INVESTMENT PAYMENTS
+                                  </p>
+                                  <div className="space-y-2">
+                                    {investmentPaymentOptions.map((option) => (
+                                      <div
+                                        key={option}
+                                        className="flex items-start space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`pay-inv-${option}`}
+                                          checked={formData.paymentOptions.includes(
+                                            option,
+                                          )}
+                                          onCheckedChange={() =>
+                                            togglePaymentOption(option)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <label
+                                          htmlFor={`pay-inv-${option}`}
+                                          className="text-sm cursor-pointer leading-tight"
+                                        >
+                                          {option === "One-time"
+                                            ? "One-time Payment"
+                                            : option}
+                                          <span className="block text-xs text-muted-foreground">
+                                            {
+                                              PAYMENT_OPTION_DESCRIPTIONS[option]
+                                            }
+                                          </span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {formData.paymentOptions.includes(
+                                    "Investment Window",
+                                  ) && (
+                                    <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded-md">
+                                      Investment window:{" "}
+                                      {formData.investmentWindowStart &&
+                                      formData.investmentWindowEnd ? (
+                                        `${formData.investmentWindowStart} → ${formData.investmentWindowEnd}`
+                                      ) : (
+                                        <span className="text-destructive">
+                                          not set — add dates in Step 3
+                                        </span>
+                                      )}
+                                    </p>
+                                  )}
                                 </div>
-                              ),
-                            )}
-                          </div>
+                              )}
+                              {formData.buyingPaths.includes("Ownership") && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <Home className="h-3.5 w-3.5" />
+                                    OWNERSHIP PAYMENTS
+                                  </p>
+                                  <div className="space-y-2">
+                                    {ownershipPaymentOptions.map((option) => (
+                                      <div
+                                        key={option}
+                                        className="flex items-start space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`pay-own-${option}`}
+                                          checked={formData.paymentOptions.includes(
+                                            option,
+                                          )}
+                                          onCheckedChange={() =>
+                                            togglePaymentOption(option)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <label
+                                          htmlFor={`pay-own-${option}`}
+                                          className="text-sm cursor-pointer leading-tight"
+                                        >
+                                          {option === "One-time"
+                                            ? "One-time Payment"
+                                            : option}
+                                          <span className="block text-xs text-muted-foreground">
+                                            {
+                                              PAYMENT_OPTION_DESCRIPTIONS[option]
+                                            }
+                                          </span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {formData.paymentOptions.includes(
+                                    "Milestone-based",
+                                  ) && (
+                                    <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded-md">
+                                      {formData.milestones.length > 0
+                                        ? `Released against ${formData.milestones.length} milestone${formData.milestones.length > 1 ? "s" : ""} configured in Step 3.`
+                                        : "No milestones configured yet — add them in Step 3."}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Installment Configuration - shown only if Installment is selected */}
-                        {formData.paymentOptions.includes("Installment") && (
+                        {/* Installment Configuration - shown only if Scheduled Tranche is selected */}
+                        {formData.paymentOptions.includes("Scheduled Tranche") && (
                           <div className="p-4 bg-muted rounded-lg space-y-4">
                             <h4 className="text-sm font-medium">
-                              Installment Configuration
+                              Tranche Configuration
                             </h4>
 
                             <div>
@@ -2884,6 +3600,56 @@ export function AssetManagement() {
                             </div>
                             <div className="flex justify-between items-start">
                               <span className="text-sm text-muted-foreground">
+                                Buying Paths:
+                              </span>
+                              <span className="flex flex-wrap gap-1 justify-end">
+                                {formData.buyingPaths.length > 0 ? (
+                                  formData.buyingPaths.map((path) => (
+                                    <Badge
+                                      key={path}
+                                      variant="outline"
+                                      className={
+                                        path === "Investment"
+                                          ? "border-blue-500 text-blue-600 bg-blue-50"
+                                          : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                                      }
+                                    >
+                                      {path}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="font-medium text-destructive text-right">
+                                    None selected
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            {formData.buyingPaths.includes("Investment") && (
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm text-muted-foreground">
+                                  Interest Structure:
+                                </span>
+                                <span className="font-medium text-right">
+                                  {formData.ownershipType === "Fractional"
+                                    ? "Fractional Interests"
+                                    : "Single-ticket Interest"}
+                                </span>
+                              </div>
+                            )}
+                            {formData.buyingPaths.includes("Ownership") && (
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm text-muted-foreground">
+                                  Release Basis:
+                                </span>
+                                <span className="font-medium text-right">
+                                  {formData.releaseBasis === "Milestone-linked"
+                                    ? `Milestone-linked (${formData.milestones.length} milestone${formData.milestones.length === 1 ? "" : "s"})`
+                                    : "Scheduled tranche"}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
                                 Location:
                               </span>
                               <span className="font-medium text-right">
@@ -3488,7 +4254,7 @@ export function AssetManagement() {
                         : currentStep === 2
                           ? "Physical Details & Facilities"
                           : currentStep === 3
-                            ? "Investment Program & Structure"
+                            ? "Investment Program & Buying Paths"
                             : currentStep === 4
                               ? "Pricing Logic"
                               : currentStep === 5
@@ -4101,7 +4867,7 @@ export function AssetManagement() {
                       </div>
                     )}
 
-                    {/* Step 3: Investment Program & Structure */}
+                    {/* Step 3: Investment Program & Buying Paths */}
                     {currentStep === 3 && (
                       <div className="space-y-4">
                         {/* Investment Program */}
@@ -4111,7 +4877,7 @@ export function AssetManagement() {
                           </Label>
                           <p className="text-xs text-muted-foreground mb-2">
                             Defines the kind of investment this asset carries —
-                            it shapes ownership structures, funding terms,
+                            it shapes funding terms, interest structure,
                             returns and risk disclosure in the steps that
                             follow.
                           </p>
@@ -4186,76 +4952,265 @@ export function AssetManagement() {
                         </div>
 
                         <div>
-                          <Label>Ownership Options *</Label>
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Full")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Full"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">Full Ownership</h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {isHarbor
-                                  ? "Whole-asset acquisition by a single institutional buyer"
-                                  : "Single owner purchases entire asset"}
-                              </p>
-                            </div>
-                            <div
-                              onClick={() =>
-                                updateFormData("ownershipType", "Fractional")
-                              }
-                              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                formData.ownershipType === "Fractional"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-muted-foreground"
-                              }`}
-                            >
-                              <h4 className="font-medium">
-                                Fractional Ownership
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {isHarbor
-                                  ? "Large fractional blocks sized for institutional commitments"
-                                  : "Multiple investors own fractions"}
-                              </p>
-                            </div>
+                          <Label className="text-base font-semibold mb-1 block">
+                            Buying Paths *
+                          </Label>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            UML §1 Buy-In — choose how buyers may acquire this
+                            asset. Enable one or both paths; each path carries
+                            its own terms, payment options and fund-release
+                            rules in the steps that follow.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {BUYING_PATH_OPTIONS.map((path) => {
+                              const selected = formData.buyingPaths.includes(
+                                path.value,
+                              );
+                              const PathIcon = path.icon;
+                              return (
+                                <div
+                                  key={path.value}
+                                  onClick={() => handlePathToggle(path.value)}
+                                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                    selected
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                          selected
+                                            ? "bg-primary/10 text-primary"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        <PathIcon className="h-4 w-4" />
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold text-sm">
+                                          {path.value}
+                                        </h4>
+                                        <span
+                                          className={`text-[11px] font-medium ${
+                                            selected
+                                              ? "text-primary"
+                                              : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {selected
+                                            ? "Enabled"
+                                            : "Click to enable"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                                        selected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-muted-foreground"
+                                      }`}
+                                    >
+                                      {selected && (
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {path.blurb}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                                    <span className="font-medium text-foreground/80">
+                                      Payment:
+                                    </span>{" "}
+                                    {path.payment}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                                    <span className="font-medium text-foreground/80">
+                                      Terms:
+                                    </span>{" "}
+                                    {path.terms}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
+                          {formData.buyingPaths.length === 0 && (
+                            <p className="text-xs text-destructive mt-1.5">
+                              Select at least one Buying Path to continue.
+                            </p>
+                          )}
                         </div>
 
-                        {/* edit-Harbor — large-ticket funding parameters */}
-                        {isHarbor && (
-                          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-lg space-y-4">
-                            <div>
-                              <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                                Large-Ticket Funding Parameters
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Urbco Harbor structures stationary funding for
-                                exceptionally large investments.
+                        {/* Settlement flow strip — UML §§2-7 (read-only model) */}
+                        {formData.buyingPaths.includes("Investment") && (
+                          <div className="p-3 bg-muted rounded-lg space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-xs font-medium">
+                                Investment settlement flow
                               </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor="edit-targetFunding">
-                                  Total Funding Required (₦)
-                                </Label>
-                                <Input
-                                  id="edit-targetFunding"
-                                  type="number"
-                                  value={formData.targetFunding}
-                                  onChange={(e) =>
-                                    updateFormData(
-                                      "targetFunding",
-                                      e.target.value,
-                                    )
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                "Terms reviewed",
+                                "Payment instruction",
+                                "Trustee custody",
+                                "Independent reconciliation",
+                                "Fund release",
+                              ].map((step, index, arr) => (
+                                <span
+                                  key={step}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <span className="px-2 py-0.5 bg-background border rounded-full text-[11px] text-muted-foreground">
+                                    {index + 1}. {step}
+                                  </span>
+                                  {index < arr.length - 1 && (
+                                    <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              The trustee holds funds until reconciliation
+                              clears; releases follow the agreed exit /
+                              redemption terms below.
+                            </p>
+                          </div>
+                        )}
+                        {formData.buyingPaths.includes("Ownership") && (
+                          <div className="p-3 bg-muted rounded-lg space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Home className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-xs font-medium">
+                                Ownership settlement flow
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                "Terms reviewed",
+                                "Payment instruction",
+                                "Trustee custody",
+                                "Independent reconciliation",
+                                formData.releaseBasis === "Milestone-linked"
+                                  ? "Milestone release"
+                                  : "Scheduled release",
+                              ].map((step, index, arr) => (
+                                <span
+                                  key={step}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <span className="px-2 py-0.5 bg-background border rounded-full text-[11px] text-muted-foreground">
+                                    {index + 1}. {step}
+                                  </span>
+                                  {index < arr.length - 1 && (
+                                    <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              Release is{" "}
+                              {formData.releaseBasis === "Milestone-linked"
+                                ? "unlocked per verified milestone"
+                                : "made against the fixed tranche schedule"}{" "}
+                              — configured below.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Investment path — UML "Review Investment Terms" */}
+                        {formData.buyingPaths.includes("Investment") && (
+                          <div className="p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                Investment Terms
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Financial interest in the project — payments
+                                settle one-time or within the window, not by
+                                construction milestone.
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label>Interest Structure *</Label>
+                              <div className="grid grid-cols-2 gap-3 mt-2">
+                                <div
+                                  onClick={() =>
+                                    updateFormData("ownershipType", "Full")
                                   }
-                                  placeholder="50000000000"
-                                />
+                                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                    formData.ownershipType === "Full"
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <h4 className="font-medium text-sm">
+                                    Single-ticket Interest
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {isHarbor
+                                      ? "Whole-asset interest placed with a single institutional acquirer"
+                                      : "One investor takes the full interest"}
+                                  </p>
+                                </div>
+                                <div
+                                  onClick={() =>
+                                    updateFormData("ownershipType", "Fractional")
+                                  }
+                                  className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                    formData.ownershipType === "Fractional"
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <h4 className="font-medium text-sm">
+                                    Fractional Interests
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {isHarbor
+                                      ? "Large fractional blocks sized for institutional commitments"
+                                      : "The interest is split into tradable fractions"}
+                                  </p>
+                                </div>
+                              </div>
+                              {formData.ownershipType === "Full" && (
+                                <p className="text-xs text-muted-foreground mt-1.5">
+                                  Single-ticket interest — sold as one whole
+                                  interest to a single acquirer.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label htmlFor="edit-investmentType">
+                                  Investment Instrument
+                                </Label>
+                                <Select
+                                  value={formData.investmentType}
+                                  onValueChange={(val) =>
+                                    updateFormData("investmentType", val)
+                                  }
+                                >
+                                  <SelectTrigger id="edit-investmentType">
+                                    <SelectValue placeholder="Select instrument" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Equity">
+                                      Equity
+                                    </SelectItem>
+                                    <SelectItem value="Debt">
+                                      Debt
+                                    </SelectItem>
+                                    <SelectItem value="Mezzanine">
+                                      Mezzanine
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                               <div>
                                 <Label htmlFor="edit-minimumInvestment">
@@ -4274,35 +5229,111 @@ export function AssetManagement() {
                                   placeholder="10000000"
                                 />
                               </div>
+                              <div>
+                                <Label htmlFor="edit-targetFunding">
+                                  Total Funding Required (₦)
+                                </Label>
+                                <Input
+                                  id="edit-targetFunding"
+                                  type="number"
+                                  value={formData.targetFunding}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "targetFunding",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="50000000000"
+                                />
+                              </div>
                             </div>
+
                             <div>
-                              <Label htmlFor="edit-investmentType">
-                                Investment Instrument
+                              <Label className="text-sm font-medium">
+                                Investment Window
                               </Label>
-                              <Select
-                                value={formData.investmentType}
-                                onValueChange={(val) =>
-                                  updateFormData("investmentType", val)
-                                }
-                              >
-                                <SelectTrigger id="edit-investmentType">
-                                  <SelectValue placeholder="Select instrument" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Equity">
-                                    Equity
-                                  </SelectItem>
-                                  <SelectItem value="Debt">Debt</SelectItem>
-                                  <SelectItem value="Mezzanine">
-                                    Mezzanine
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1.5">
+                                <div>
+                                  <Label htmlFor="edit-investmentWindowStart" className="text-xs">
+                                    Window Opens
+                                  </Label>
+                                  <Input
+                                    id="edit-investmentWindowStart"
+                                    type="date"
+                                    value={formData.investmentWindowStart}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "investmentWindowStart",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-investmentWindowEnd" className="text-xs">
+                                    Window Closes
+                                  </Label>
+                                  <Input
+                                    id="edit-investmentWindowEnd"
+                                    type="date"
+                                    value={formData.investmentWindowEnd}
+                                    onChange={(e) =>
+                                      updateFormData(
+                                        "investmentWindowEnd",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Optional agreed period during which
+                                &ldquo;Investment Window&rdquo; payments may
+                                settle (referenced in Step 4).
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="edit-investorRights">
+                                  Investor Rights
+                                </Label>
+                                <Textarea
+                                  id="edit-investorRights"
+                                  value={formData.investorRights}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "investorRights",
+                                      e.target.value,
+                                    )
+                                  }
+                                  rows={3}
+                                  placeholder="e.g. Pro-rata voting rights, quarterly reporting, information rights…"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="edit-redemptionTerms">
+                                  Exit / Redemption Terms
+                                </Label>
+                                <Textarea
+                                  id="edit-redemptionTerms"
+                                  value={formData.redemptionTerms}
+                                  onChange={(e) =>
+                                    updateFormData(
+                                      "redemptionTerms",
+                                      e.target.value,
+                                    )
+                                  }
+                                  rows={3}
+                                  placeholder="e.g. 30-day redemption notice after a 12-month holding period…"
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
 
-                        {formData.ownershipType === "Fractional" && (
+                        {formData.buyingPaths.includes("Investment") &&
+                          formData.ownershipType === "Fractional" && (
                           <>
                             <div className="p-4 bg-accent/10 border border-accent rounded-lg">
                               <h4 className="text-sm font-medium text-accent mb-3">
@@ -4312,11 +5343,11 @@ export function AssetManagement() {
                                 {formData.type === "Land" ? (
                                   <>
                                     <div>
-                                      <Label htmlFor="landUnitType">
+                                      <Label htmlFor="edit-landUnitType">
                                         Land Units *
                                       </Label>
                                       <Select
-                                        id="landUnitType"
+                                        id="edit-landUnitType"
                                         value={formData.landUnitType || ""}
                                         onValueChange={(val) =>
                                           updateFormData("landUnitType", val)
@@ -4336,11 +5367,11 @@ export function AssetManagement() {
                                       </Select>
                                     </div>
                                     <div>
-                                      <Label htmlFor="landUnitCount">
+                                      <Label htmlFor="edit-landUnitCount">
                                         Number of Units *
                                       </Label>
                                       <Input
-                                        id="landUnitCount"
+                                        id="edit-landUnitCount"
                                         type="number"
                                         value={formData.landUnitCount || ""}
                                         onChange={(e) =>
@@ -4356,11 +5387,11 @@ export function AssetManagement() {
                                 ) : (
                                   <>
                                     <div>
-                                      <Label htmlFor="fractionTotal">
+                                      <Label htmlFor="edit-fractionTotal">
                                         Total Fractions *
                                       </Label>
                                       <Input
-                                        id="fractionTotal"
+                                        id="edit-fractionTotal"
                                         type="number"
                                         value={formData.fractionTotal}
                                         onChange={(e) =>
@@ -4373,11 +5404,11 @@ export function AssetManagement() {
                                       />
                                     </div>
                                     <div>
-                                      <Label htmlFor="costPerFraction">
+                                      <Label htmlFor="edit-costPerFraction">
                                         Cost per Fraction (₦) *
                                       </Label>
                                       <Input
-                                        id="costPerFraction"
+                                        id="edit-costPerFraction"
                                         type="number"
                                         value={formData.costPerFraction}
                                         onChange={(e) =>
@@ -4414,12 +5445,241 @@ export function AssetManagement() {
                           </>
                         )}
 
-                        {formData.ownershipType === "Full" && (
-                          <div className="p-4 bg-muted rounded-lg text-center">
-                            <CircleCheck className="h-8 w-8 mx-auto text-accent mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                              Full ownership selected. Asset will be sold as a
-                              single unit.
+                        {/* Ownership path — UML "Review Ownership Terms" */}
+                        {formData.buyingPaths.includes("Ownership") && (
+                          <div className="p-4 border border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-950/20 rounded-lg space-y-4">
+                            <div>
+                              <h4 className="text-sm font-medium text-green-700 dark:text-green-300">
+                                Ownership Terms
+                              </h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Entitlement to the property / unit — how payment
+                                is made determines how funds are released (UML
+                                §2, §4B).
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label className="text-sm font-medium">
+                                Payment Release Basis *
+                              </Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                {[
+                                  {
+                                    value: "Milestone-linked",
+                                    title: "Milestone-linked",
+                                    desc: "Trustee releases funds only after an independent monitor verifies each completed milestone (UML §4B / §7).",
+                                  },
+                                  {
+                                    value: "Scheduled",
+                                    title: "Scheduled tranche",
+                                    desc: "Funds release against the fixed tranche schedule configured in Step 4.",
+                                  },
+                                ].map((basis) => {
+                                  const selected =
+                                    formData.releaseBasis === basis.value;
+                                  return (
+                                    <div
+                                      key={basis.value}
+                                      onClick={() =>
+                                        updateFormData(
+                                          "releaseBasis",
+                                          basis.value,
+                                        )
+                                      }
+                                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                        selected
+                                          ? "border-primary bg-primary/5"
+                                          : "border-border hover:border-muted-foreground"
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="font-medium text-sm">
+                                          {basis.title}
+                                        </h5>
+                                        <div
+                                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                            selected
+                                              ? "border-primary"
+                                              : "border-muted-foreground"
+                                          }`}
+                                        >
+                                          {selected && (
+                                            <div className="w-2 h-2 rounded-full bg-primary" />
+                                          )}
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {basis.desc}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <Label className="text-sm font-medium">
+                                  Milestone Schedule
+                                  {formData.releaseBasis === "Milestone-linked"
+                                    ? " *"
+                                    : ""}
+                                </Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addMilestone}
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  Add Milestone
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Every release is gated on the trustee confirming
+                                an independent monitor has flagged the milestone
+                                complete — the next tranche funds only then.
+                              </p>
+                              {formData.milestones.length === 0 ? (
+                                <p className="text-xs text-muted-foreground border border-dashed rounded-lg p-3 text-center">
+                                  No milestones yet — add one for each funding
+                                  stage that should unlock release.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {formData.milestones.map(
+                                    (milestone, index) => (
+                                      <div
+                                        key={index}
+                                        className="grid grid-cols-12 gap-2 items-end p-2 bg-muted rounded-lg"
+                                      >
+                                        <div className="col-span-12 md:col-span-5">
+                                          <Label
+                                            htmlFor={`edit-milestone-name-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Milestone *
+                                          </Label>
+                                          <Input
+                                            id={`edit-milestone-name-${index}`}
+                                            value={milestone.name}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "name",
+                                                e.target.value,
+                                              )
+                                            }
+                                            placeholder="e.g. Foundation completed"
+                                          />
+                                        </div>
+                                        <div className="col-span-5 md:col-span-3">
+                                          <Label
+                                            htmlFor={`edit-milestone-date-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Target Date
+                                          </Label>
+                                          <Input
+                                            id={`edit-milestone-date-${index}`}
+                                            type="date"
+                                            value={milestone.targetDate}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "targetDate",
+                                                e.target.value,
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                        <div className="col-span-5 md:col-span-3">
+                                          <Label
+                                            htmlFor={`edit-milestone-pct-${index}`}
+                                            className="text-xs"
+                                          >
+                                            Release %
+                                          </Label>
+                                          <Input
+                                            id={`edit-milestone-pct-${index}`}
+                                            type="number"
+                                            min={0}
+                                            max={100}
+                                            value={milestone.releasePct}
+                                            onChange={(e) =>
+                                              updateMilestone(
+                                                index,
+                                                "releasePct",
+                                                e.target.value,
+                                              )
+                                            }
+                                            placeholder="25"
+                                          />
+                                        </div>
+                                        <div className="col-span-2 md:col-span-1 flex md:justify-end">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-destructive hover:text-destructive"
+                                            onClick={() =>
+                                              removeMilestone(index)
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">
+                                              Remove milestone
+                                            </span>
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      Total released across milestones
+                                    </span>
+                                    <span
+                                      className={`font-semibold ${
+                                        milestoneReleaseTotal > 100
+                                          ? "text-destructive"
+                                          : milestoneReleaseTotal === 100
+                                            ? "text-accent"
+                                            : ""
+                                      }`}
+                                    >
+                                      {milestoneReleaseTotal}%
+                                    </span>
+                                  </div>
+                                  {milestoneReleaseTotal > 100 && (
+                                    <p className="text-xs text-destructive">
+                                      Milestone releases exceed 100% — adjust
+                                      before publishing.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="edit-titleTerms">
+                                Ownership / Title Terms
+                              </Label>
+                              <Textarea
+                                id="edit-titleTerms"
+                                value={formData.titleTerms}
+                                onChange={(e) =>
+                                  updateFormData("titleTerms", e.target.value)
+                                }
+                                rows={3}
+                                placeholder="e.g. Title deed transfers within 60 days of final payment; occupancy rights from handover…"
+                              />
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                              Purchase price and payment plan are configured in
+                              Step 4 · unit entitlement in Step 2.
                             </p>
                           </div>
                         )}
@@ -4529,38 +5789,125 @@ export function AssetManagement() {
                           <Label className="mb-3 block">
                             Payment Options *
                           </Label>
-                          <div className="space-y-2">
-                            {["Full", "Installment", "Stage-based"].map(
-                              (option) => (
-                                <div
-                                  key={option}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={option}
-                                    checked={formData.paymentOptions.includes(
-                                      option,
-                                    )}
-                                    onCheckedChange={() =>
-                                      togglePaymentOption(option)
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={option}
-                                    className="text-sm cursor-pointer"
-                                  >
-                                    {option} Payment
-                                  </label>
+                          {formData.buyingPaths.length === 0 ? (
+                            <p className="text-xs text-destructive">
+                              No Buying Path selected — choose one in Step 3 to
+                              configure payment.
+                            </p>
+                          ) : (
+                            <div className="space-y-4">
+                              {formData.buyingPaths.includes("Investment") && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <Coins className="h-3.5 w-3.5" />
+                                    INVESTMENT PAYMENTS
+                                  </p>
+                                  <div className="space-y-2">
+                                    {investmentPaymentOptions.map((option) => (
+                                      <div
+                                        key={option}
+                                        className="flex items-start space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`pay-inv-${option}`}
+                                          checked={formData.paymentOptions.includes(
+                                            option,
+                                          )}
+                                          onCheckedChange={() =>
+                                            togglePaymentOption(option)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <label
+                                          htmlFor={`pay-inv-${option}`}
+                                          className="text-sm cursor-pointer leading-tight"
+                                        >
+                                          {option === "One-time"
+                                            ? "One-time Payment"
+                                            : option}
+                                          <span className="block text-xs text-muted-foreground">
+                                            {
+                                              PAYMENT_OPTION_DESCRIPTIONS[option]
+                                            }
+                                          </span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {formData.paymentOptions.includes(
+                                    "Investment Window",
+                                  ) && (
+                                    <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded-md">
+                                      Investment window:{" "}
+                                      {formData.investmentWindowStart &&
+                                      formData.investmentWindowEnd ? (
+                                        `${formData.investmentWindowStart} → ${formData.investmentWindowEnd}`
+                                      ) : (
+                                        <span className="text-destructive">
+                                          not set — add dates in Step 3
+                                        </span>
+                                      )}
+                                    </p>
+                                  )}
                                 </div>
-                              ),
-                            )}
-                          </div>
+                              )}
+                              {formData.buyingPaths.includes("Ownership") && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                                    <Home className="h-3.5 w-3.5" />
+                                    OWNERSHIP PAYMENTS
+                                  </p>
+                                  <div className="space-y-2">
+                                    {ownershipPaymentOptions.map((option) => (
+                                      <div
+                                        key={option}
+                                        className="flex items-start space-x-2"
+                                      >
+                                        <Checkbox
+                                          id={`pay-own-${option}`}
+                                          checked={formData.paymentOptions.includes(
+                                            option,
+                                          )}
+                                          onCheckedChange={() =>
+                                            togglePaymentOption(option)
+                                          }
+                                          className="mt-0.5"
+                                        />
+                                        <label
+                                          htmlFor={`pay-own-${option}`}
+                                          className="text-sm cursor-pointer leading-tight"
+                                        >
+                                          {option === "One-time"
+                                            ? "One-time Payment"
+                                            : option}
+                                          <span className="block text-xs text-muted-foreground">
+                                            {
+                                              PAYMENT_OPTION_DESCRIPTIONS[option]
+                                            }
+                                          </span>
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {formData.paymentOptions.includes(
+                                    "Milestone-based",
+                                  ) && (
+                                    <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded-md">
+                                      {formData.milestones.length > 0
+                                        ? `Released against ${formData.milestones.length} milestone${formData.milestones.length > 1 ? "s" : ""} configured in Step 3.`
+                                        : "No milestones configured yet — add them in Step 3."}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {formData.paymentOptions.includes("Installment") && (
+                        {formData.paymentOptions.includes("Scheduled Tranche") && (
                           <div className="p-4 bg-muted rounded-lg space-y-4">
                             <h4 className="text-sm font-medium">
-                              Installment Configuration
+                              Tranche Configuration
                             </h4>
 
                             <div>
@@ -5509,6 +6856,56 @@ export function AssetManagement() {
                                 {formData.platform}
                               </Badge>
                             </div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-sm text-muted-foreground">
+                                Buying Paths:
+                              </span>
+                              <span className="flex flex-wrap gap-1 justify-end">
+                                {formData.buyingPaths.length > 0 ? (
+                                  formData.buyingPaths.map((path) => (
+                                    <Badge
+                                      key={path}
+                                      variant="outline"
+                                      className={
+                                        path === "Investment"
+                                          ? "border-blue-500 text-blue-600 bg-blue-50"
+                                          : "border-emerald-500 text-emerald-600 bg-emerald-50"
+                                      }
+                                    >
+                                      {path}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="font-medium text-destructive text-right">
+                                    None selected
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            {formData.buyingPaths.includes("Investment") && (
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm text-muted-foreground">
+                                  Interest Structure:
+                                </span>
+                                <span className="font-medium text-right">
+                                  {formData.ownershipType === "Fractional"
+                                    ? "Fractional Interests"
+                                    : "Single-ticket Interest"}
+                                </span>
+                              </div>
+                            )}
+                            {formData.buyingPaths.includes("Ownership") && (
+                              <div className="flex justify-between items-start">
+                                <span className="text-sm text-muted-foreground">
+                                  Release Basis:
+                                </span>
+                                <span className="font-medium text-right">
+                                  {formData.releaseBasis === "Milestone-linked"
+                                    ? `Milestone-linked (${formData.milestones.length} milestone${formData.milestones.length === 1 ? "" : "s"})`
+                                    : "Scheduled tranche"}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-between items-start">
                               <span className="text-sm text-muted-foreground">
                                 Location:
