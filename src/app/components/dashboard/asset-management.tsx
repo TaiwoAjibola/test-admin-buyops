@@ -3885,19 +3885,21 @@ export function AssetManagement() {
                         >
                           Save Draft
                         </Button>
-                        {currentStep < 4 ? (
+                        {currentStep < totalSteps ? (
                           <Button onClick={nextStep}>
                             Next
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => handleSubmit("published")}
+                            onClick={() => handleSubmit()}
                             disabled={loading}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Publish Asset
+                            {formData.status === "published"
+                              ? "Publish Asset"
+                              : "Save as Draft"}
                           </Button>
                         )}
                       </div>
@@ -7005,26 +7007,16 @@ export function AssetManagement() {
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
-                          onClick={() => {
-                            setSelectedPlatform("");
-                            setFormData(INITIAL_FORM_DATA);
-                            setCurrentStep(1);
-                          }}
-                        >
-                          ← Change Platform
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setCreateDialogOpen(false)}
+                          onClick={() => setEditDialogOpen(false)}
                         >
                           Cancel
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={() => handleSubmit("draft")}
+                          onClick={handleUpdate}
                           disabled={loading}
                         >
-                          Save & Continue Later
+                          Save Changes
                         </Button>
                         {currentStep < totalSteps ? (
                           <Button onClick={nextStep}>
@@ -7032,7 +7024,7 @@ export function AssetManagement() {
                             <ChevronRight className="h-4 w-4 ml-1" />
                           </Button>
                         ) : (
-                          <Button onClick={() => handleSubmit()}>
+                          <Button onClick={handleUpdate} disabled={loading}>
                             {formData.status === "published"
                               ? "Publish Asset"
                               : "Save as Draft"}
