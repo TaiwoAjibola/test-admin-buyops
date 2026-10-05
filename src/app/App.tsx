@@ -4,6 +4,7 @@ import { CompanyManagement } from "./components/dashboard/company-management";
 import { AssetManagement } from "./components/dashboard/asset-management";
 import { Clusters } from "./components/dashboard/clusters";
 import { Users as UserManagement } from "./components/dashboard/users";
+import { KycManagement } from "./components/dashboard/kyc-management";
 import { TransactionsCommissions } from "./components/dashboard/transactions-commissions-new";
 import { Reports } from "./components/dashboard/reports";
 import { InstallmentPayments } from "./components/dashboard/installment-payments";
@@ -36,6 +37,7 @@ import {
   Moon,
   Sun,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import {
   BrowserRouter,
@@ -70,6 +72,11 @@ const navigationGroups = [
       { name: "Clusters", icon: Briefcase, id: "clusters" },
       { name: "Users", icon: UserCog, id: "users" },
     ],
+  },
+  {
+    name: "Compliance",
+    id: "compliance",
+    items: [{ name: "KYC Review", icon: ShieldCheck, id: "kyc" }],
   },
   {
     name: "Financial",
@@ -291,6 +298,7 @@ function DashboardContent() {
               <Route path="/leads" element={<LeadManagement />} />
               <Route path="/clusters" element={<Clusters />} />
               <Route path="/users" element={<UserManagement />} />
+              <Route path="/kyc" element={<KycManagement />} />
               <Route
                 path="/transactions"
                 element={<TransactionsCommissions />}

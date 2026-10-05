@@ -1051,6 +1051,69 @@ export const investorsApi = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════
+// KYC API (review, remediation, reminders — operates on investor records)
+// ══════════════════════════════════════════════════════════════════════════
+
+export const kycApi = {
+  getAll: async () => {
+    await delay(300);
+    return clone(investors);
+  },
+
+  getById: async (id: string) => {
+    await delay(200);
+    const investor = investors.find(i => i.id === id);
+    if (!investor) throw new Error('Investor not found');
+    return clone(investor);
+  },
+
+  setKycStatus: async (id: string, status: string, remediationItems: string[] = []) => {
+    await delay(400);
+    const index = investors.findIndex(i => i.id === id);
+    if (index === -1) throw new Error('Investor not found');
+    const now = new Date().toISOString();
+    const inv = investors[index];
+    inv.kycStatus = status;
+    if (status === 'verified') {
+      inv.kycVerifiedAt = now;
+      inv.kycRemediationItems = [];
+    } else if (status === 'under_review') {
+      if (!inv.kycSubmittedAt) inv.kycSubmittedAt = now;
+      inv.kycVerifiedAt = null;
+      inv.kycRemediationItems = [];
+    } else {
+      inv.kycVerifiedAt = null;
+      inv.kycRemediationItems = remediationItems;
+    }
+    return clone(inv);
+  },
+
+  updateDocument: async (id: string, docId: string, data: { status: string; rejectReason?: string }) => {
+    await delay(300);
+    const index = investors.findIndex(i => i.id === id);
+    if (index === -1) throw new Error('Investor not found');
+    const docs = investors[index].kycDocuments || [];
+    const doc = docs.find((d: any) => d.id === docId);
+    if (!doc) throw new Error('KYC document not found');
+    doc.status = data.status;
+    if (data.status === 'rejected') {
+      doc.rejectReason = data.rejectReason || 'Does not meet requirements';
+    } else {
+      doc.rejectReason = undefined;
+    }
+    return clone(investors[index]);
+  },
+
+  sendReminder: async (id: string) => {
+    await delay(400);
+    const index = investors.findIndex(i => i.id === id);
+    if (index === -1) throw new Error('Investor not found');
+    investors[index].kycLastRemindedAt = new Date().toISOString();
+    return { success: true, channel: 'email', recipient: investors[index].email };
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════
 // INVOICE API
 // ══════════════════════════════════════════════════════════════════════════
 
